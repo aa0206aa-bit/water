@@ -89,6 +89,7 @@ function calcStars() {
 
 function calcFillRatio() {
   const count = water.countInZone(currentLevel.container.fillZone);
+  if (currentLevel.fillThreshold === 0) return 1;
   return Math.min(1, count / currentLevel.fillThreshold);
 }
 
