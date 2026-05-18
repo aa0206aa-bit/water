@@ -44,13 +44,33 @@ export class WaterSystem {
   }
 
   render(ctx) {
+    if (this.particles.length === 0) return;
     ctx.save();
+    // Shadow layer for depth
+    ctx.fillStyle = '#5ba8d4';
+    for (const p of this.particles) {
+      const { x, y } = p.position;
+      ctx.globalAlpha = 0.15;
+      ctx.beginPath();
+      ctx.arc(x + 1, y + 1, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Main particle
     ctx.fillStyle = '#89CFF0';
-    ctx.globalAlpha = 0.75;
+    ctx.globalAlpha = 0.7;
     for (const p of this.particles) {
       const { x, y } = p.position;
       ctx.beginPath();
       ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Highlight
+    ctx.fillStyle = '#d6eeff';
+    ctx.globalAlpha = 0.4;
+    for (const p of this.particles) {
+      const { x, y } = p.position;
+      ctx.beginPath();
+      ctx.arc(x - 2, y - 2, 3, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();

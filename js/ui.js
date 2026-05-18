@@ -43,7 +43,10 @@ export class UI {
     ctx.fill();
     const fillW = barW * Math.max(0, 1 - inkRatio);
     if (fillW > 0) {
-      ctx.fillStyle = '#C8A882';
+      const grad = ctx.createLinearGradient(barX, 0, barX + fillW, 0);
+      grad.addColorStop(0, '#D4956A');
+      grad.addColorStop(1, '#C8A882');
+      ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.roundRect(barX, barY, fillW, barH, 10);
       ctx.fill();
