@@ -1,5 +1,6 @@
 import { PhysicsEngine } from './physics.js';
 import { DrawingSystem } from './drawing.js';
+import { WaterSystem } from './water.js';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -7,6 +8,7 @@ const W = 480, H = 720;
 
 const physics = new PhysicsEngine(W, H);
 const drawing = new DrawingSystem(canvas, physics);
+const water = new WaterSystem(physics);
 
 let lastTime = 0;
 
@@ -26,9 +28,11 @@ function gameLoop(timestamp) {
   const delta = Math.min(timestamp - lastTime, 50);
   lastTime = timestamp;
   physics.step(delta);
+  water.update(delta);
   ctx.clearRect(0, 0, W, H);
   drawGrid();
   drawing.render(ctx);
+  water.render(ctx);
   requestAnimationFrame(gameLoop);
 }
 
