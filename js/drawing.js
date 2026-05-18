@@ -1,4 +1,6 @@
 export class DrawingSystem {
+  // Single instance per canvas lifetime — no destroy() needed.
+  // reset() clears stroke state between levels without rebinding events.
   constructor(canvas, physics) {
     this.canvas = canvas;
     this.physics = physics;
@@ -71,7 +73,7 @@ export class DrawingSystem {
 
     for (let i = 0; i < pts.length - 1; i++) {
       const segLen = Math.hypot(pts[i+1].x - pts[i].x, pts[i+1].y - pts[i].y);
-      if (inkUsed + segLen > inkBudget + 0.5) break;
+      if (inkUsed + segLen > inkBudget) break;
       inkUsed += segLen;
       usedPts.push(pts[i + 1]);
       const body = this.physics.addStaticSegment(pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, 6, `stroke_${id}`);
@@ -79,16 +81,17 @@ export class DrawingSystem {
     }
 
     if (bodies.length === 0) { this.currentPoints = []; return; }
-    this.inkUsed += inkUsed;
+    this.inkUsed = Math.min(this.inkUsed + inkUsed, this.maxInk);
     this.strokes.push({ id, bodies, points: usedPts, inkUsed });
     this.currentPoints = [];
   }
 
   _hitTest(x, y) {
-    for (const stroke of this.strokes) {
+    for (let i = this.strokes.length - 1; i >= 0; i--) {
+      const stroke = this.strokes[i];
       const pts = stroke.points;
-      for (let i = 0; i < pts.length - 1; i++) {
-        if (this._nearSeg(x, y, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, 14)) return stroke;
+      for (let i2 = 0; i2 < pts.length - 1; i2++) {
+        if (this._nearSeg(x, y, pts[i2].x, pts[i2].y, pts[i2+1].x, pts[i2+1].y, 14)) return stroke;
       }
     }
     return null;
@@ -103,7 +106,7 @@ export class DrawingSystem {
 
   _deleteStroke(stroke) {
     stroke.bodies.forEach(b => this.physics.removeBody(b));
-    this.inkUsed -= stroke.inkUsed;
+    this.inkUsed = Math.max(0, this.inkUsed - stroke.inkUsed);
     this.strokes = this.strokes.filter(s => s.id !== stroke.id);
   }
 
