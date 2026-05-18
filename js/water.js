@@ -48,9 +48,9 @@ export class WaterSystem {
     ctx.save();
     // Shadow layer for depth
     ctx.fillStyle = '#5ba8d4';
+    ctx.globalAlpha = 0.15;
     for (const p of this.particles) {
       const { x, y } = p.position;
-      ctx.globalAlpha = 0.15;
       ctx.beginPath();
       ctx.arc(x + 1, y + 1, 7, 0, Math.PI * 2);
       ctx.fill();
