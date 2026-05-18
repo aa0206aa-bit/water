@@ -173,8 +173,10 @@ export class UI {
     ctx.fill();
     ctx.fillStyle = '#5a3e00';
     ctx.font = 'bold 22px sans-serif';
-    ctx.fillText('再試一次', this.W / 2, 436);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('再試一次', this.W / 2, 428);
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 }
