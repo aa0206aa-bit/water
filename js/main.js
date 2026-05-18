@@ -16,6 +16,7 @@ function drawGrid() {
 }
 
 function gameLoop(timestamp) {
+  if (lastTime === 0) lastTime = timestamp;
   const delta = Math.min(timestamp - lastTime, 50);
   lastTime = timestamp;
   ctx.clearRect(0, 0, W, H);
