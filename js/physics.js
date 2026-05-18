@@ -1,9 +1,12 @@
+if (typeof Matter === 'undefined') {
+  throw new Error('Matter.js must be loaded as a classic <script> before physics.js');
+}
 const { Engine, World, Bodies } = Matter;
 
 export class PhysicsEngine {
   constructor(width, height) {
     this.engine = Engine.create();
-    this.engine.gravity.y = 2;
+    this.engine.gravity.y = 2; // 2× default; feels water-like at 480×720 px scale
     this.world = this.engine.world;
     this.width = width;
     this.height = height;
@@ -20,6 +23,7 @@ export class PhysicsEngine {
     ]);
   }
 
+  // Returns null if segment is degenerate (<1px); callers must guard.
   // Add a static line segment as a thin rectangle
   addStaticSegment(x1, y1, x2, y2, thickness = 10, label = 'wall') {
     const dx = x2 - x1, dy = y2 - y1;
@@ -52,7 +56,8 @@ export class PhysicsEngine {
     World.remove(this.world, body);
   }
 
-  // Remove all non-bound bodies (for level reset)
+  // Removes all direct-child bodies except bounds. Only works for bodies added
+  // directly to this.world (not nested composites).
   clearLevel() {
     const toRemove = this.world.bodies.filter(b => b.label !== 'bound');
     toRemove.forEach(b => World.remove(this.world, b));
