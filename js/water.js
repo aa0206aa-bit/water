@@ -1,3 +1,5 @@
+const SPAWN_INTERVAL = 80;
+
 export class WaterSystem {
   constructor(physics) {
     this.physics = physics;
@@ -6,7 +8,6 @@ export class WaterSystem {
     this.totalCount = 60;
     this.spawned = 0;
     this.spawnTimer = 0;
-    this.SPAWN_INTERVAL = 80;
     this.source = { x: 0, y: 0 };
   }
 
@@ -26,7 +27,7 @@ export class WaterSystem {
   allSettled() {
     if (!this.isDone()) return false;
     return this.particles.every(p => {
-      const v = p.velocity;
+      const v = Matter.Body.getVelocity(p);
       return v.x * v.x + v.y * v.y < 0.5;
     });
   }
@@ -34,20 +35,20 @@ export class WaterSystem {
   update(delta) {
     if (!this.triggered) return;
     this.spawnTimer += delta;
-    while (this.spawnTimer >= this.SPAWN_INTERVAL && this.spawned < this.totalCount) {
+    while (this.spawnTimer >= SPAWN_INTERVAL && this.spawned < this.totalCount) {
       const jitter = (Math.random() - 0.5) * 10;
       this.particles.push(this.physics.addWaterParticle(this.source.x + jitter, this.source.y));
       this.spawned++;
-      this.spawnTimer -= this.SPAWN_INTERVAL;
+      this.spawnTimer -= SPAWN_INTERVAL;
     }
   }
 
   render(ctx) {
     ctx.save();
     ctx.fillStyle = '#89CFF0';
+    ctx.globalAlpha = 0.75;
     for (const p of this.particles) {
       const { x, y } = p.position;
-      ctx.globalAlpha = 0.75;
       ctx.beginPath();
       ctx.arc(x, y, 6, 0, Math.PI * 2);
       ctx.fill();
@@ -64,6 +65,7 @@ export class WaterSystem {
   }
 
   reset() {
+    // Resets runtime state only; configure() values (source, totalCount) are preserved.
     this.particles.forEach(b => this.physics.removeBody(b));
     this.particles = [];
     this.triggered = false;
