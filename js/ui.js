@@ -31,6 +31,7 @@ export class UI {
   }
 
   renderTopBar(ctx, inkRatio, levelName = '') {
+    ctx.save();
     ctx.fillStyle = '#8B7355';
     ctx.font = 'bold 28px sans-serif';
     ctx.fillText('←', 18, 42);
@@ -54,6 +55,7 @@ export class UI {
       ctx.fillText(levelName, this.W / 2, barY + barH + 12);
       ctx.textAlign = 'left';
     }
+    ctx.restore();
   }
 
   renderSourceButton(ctx, sourceX, sourceY, triggered, t = 0) {
@@ -76,12 +78,11 @@ export class UI {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('💧', sourceX, sourceY);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
   renderWalls(ctx, walls) {
+    ctx.save();
     ctx.strokeStyle = '#89A8AA';
     ctx.lineWidth = 10;
     ctx.lineCap = 'round';
@@ -91,9 +92,11 @@ export class UI {
       ctx.lineTo(w.x2, w.y2);
       ctx.stroke();
     }
+    ctx.restore();
   }
 
   renderContainer(ctx, container, fillRatio) {
+    ctx.save();
     ctx.strokeStyle = '#89A8AA';
     ctx.lineWidth = 10;
     ctx.lineCap = 'round';
@@ -119,6 +122,7 @@ export class UI {
     ctx.fillText(face, container.faceX, container.faceY + 30);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
+    ctx.restore();
   }
 
   _getFace(ratio) {
@@ -129,6 +133,7 @@ export class UI {
   }
 
   renderWin(ctx, stars) {
+    ctx.save();
     ctx.fillStyle = 'rgba(255,248,240,0.88)';
     ctx.fillRect(0, 0, this.W, 720);
     ctx.fillStyle = '#5a3e00';
@@ -144,11 +149,15 @@ export class UI {
     ctx.fill();
     ctx.fillStyle = '#5a3e00';
     ctx.font = 'bold 22px sans-serif';
-    ctx.fillText('下一關 →', this.W / 2, 476);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('下一關 →', this.W / 2, 468);
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
   }
 
   renderFail(ctx) {
+    ctx.save();
     ctx.fillStyle = 'rgba(255,248,240,0.88)';
     ctx.fillRect(0, 0, this.W, 720);
     ctx.fillStyle = '#5a3e00';
@@ -163,5 +172,6 @@ export class UI {
     ctx.font = 'bold 22px sans-serif';
     ctx.fillText('再試一次', this.W / 2, 436);
     ctx.textAlign = 'left';
+    ctx.restore();
   }
 }
