@@ -21,16 +21,14 @@ const drawing = new DrawingSystem(canvas, physics);
 const water = new WaterSystem(physics);
 const ui = new UI(canvas);
 
-// Win overlay next-button click zone: center ~(W/2, 468), 180×56
-// Fail overlay retry-button click zone: center ~(W/2, 428), 180×56
 ui.on('click', (x, y) => {
   if (state === STATES.WIN) {
     if (x > W/2 - 90 && x < W/2 + 90 && y > 440 && y < 496) nextLevel();
   } else if (state === STATES.FAIL) {
     if (x > W/2 - 90 && x < W/2 + 90 && y > 400 && y < 456) resetLevel();
-  } else if (state === STATES.DRAWING) {
-    const src = currentLevel.source;
-    if (Math.hypot(x - src.x, y - src.y) < 32) triggerWater();
+  } else if (state === STATES.DRAWING || state === STATES.FLOWING) {
+    // tap anywhere (but not after just drawing a stroke) to toggle faucet
+    if (!drawing.consumeJustDrew()) toggleWater();
   }
 });
 
@@ -56,10 +54,16 @@ function loadLevel(index) {
   });
 }
 
-function triggerWater() {
-  if (state !== STATES.DRAWING) return;
-  water.trigger();
-  state = STATES.FLOWING;
+function toggleWater() {
+  if (state === STATES.DRAWING) {
+    drawing.makeAllDynamic();
+    water.setFlowing(true);
+    state = STATES.FLOWING;
+  } else if (state === STATES.FLOWING) {
+    water.setFlowing(false);
+    state = STATES.DRAWING;
+    drawing.setEnabled(true);
+  }
 }
 
 function resetLevel() {
@@ -116,7 +120,8 @@ function gameLoop(timestamp) {
   // Update
   physics.step(delta);
   water.update(delta);
-  if (state === STATES.FLOWING && water.isDone()) {
+  drawing.update(H);
+  if ((state === STATES.FLOWING || state === STATES.DRAWING) && water.isDone()) {
     flowEndTimer += delta;
     if (flowEndTimer >= GRACE_PERIOD) evaluate();
   }
@@ -129,7 +134,7 @@ function gameLoop(timestamp) {
     ui.renderWalls(ctx, currentLevel.walls);
     const fillRatio = calcFillRatio();
     ui.renderContainer(ctx, currentLevel.container, fillRatio);
-    ui.renderSourceButton(ctx, currentLevel.source.x, currentLevel.source.y, water.isTriggered(), lastTime);
+    ui.renderFaucet(ctx, currentLevel.source.x, currentLevel.source.y, water.isFlowing(), lastTime);
   }
 
   drawing.render(ctx);

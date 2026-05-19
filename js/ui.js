@@ -61,26 +61,84 @@ export class UI {
     ctx.restore();
   }
 
-  renderSourceButton(ctx, sourceX, sourceY, triggered, t = 0) {
-    const r = triggered ? 26 : 26 + Math.sin(t / 400) * 3;
+  renderFaucet(ctx, sx, sy, isFlowing, t = 0) {
     ctx.save();
-    if (!triggered) {
-      ctx.shadowColor = '#FFD580';
-      ctx.shadowBlur = 12;
-    }
-    ctx.fillStyle = triggered ? '#C0C0C0' : '#FFD580';
+
+    // --- pipe body ---
+    ctx.strokeStyle = '#7AADB0';
+    ctx.lineWidth = 13;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(sourceX, sourceY, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = triggered ? '#999' : '#B8860B';
-    ctx.lineWidth = 3;
-    ctx.shadowBlur = 0;
+    ctx.moveTo(sx, sy - 52);
+    ctx.lineTo(sx, sy - 12);
     ctx.stroke();
-    ctx.fillStyle = triggered ? '#aaa' : '#5a3e00';
-    ctx.font = `${triggered ? 18 : 20}px sans-serif`;
+
+    // --- nozzle (wider at mouth) ---
+    ctx.fillStyle = '#8BBCBF';
+    ctx.strokeStyle = '#5C9099';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(sx - 13, sy - 14, 26, 14, [3, 3, 7, 7]);
+    ctx.fill();
+    ctx.stroke();
+
+    // --- knob ---
+    const knobY = sy - 64;
+    if (isFlowing) {
+      ctx.shadowColor = 'rgba(255, 210, 60, 0.5)';
+      ctx.shadowBlur = 14;
+    }
+    ctx.fillStyle = isFlowing ? '#FFD580' : '#C8B89A';
+    ctx.beginPath();
+    ctx.arc(sx, knobY, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#8B9E9E';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // knob cross grip (rotates 45° when open)
+    ctx.save();
+    ctx.translate(sx, knobY);
+    ctx.rotate(isFlowing ? Math.PI / 4 : 0);
+    ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-9, 0); ctx.lineTo(9, 0);
+    ctx.moveTo(0, -9); ctx.lineTo(0, 9);
+    ctx.stroke();
+    ctx.restore();
+
+    // ON / OFF text on knob
+    ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('💧', sourceX, sourceY);
+    ctx.fillStyle = isFlowing ? '#4a6800' : '#888';
+    ctx.fillText(isFlowing ? 'ON' : 'OFF', sx, knobY);
+
+    // --- water stream when flowing ---
+    if (isFlowing) {
+      ctx.strokeStyle = '#89CFF0';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.65;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      const len = 34;
+      for (let i = 2; i <= len; i += 2) {
+        ctx.lineTo(sx + Math.sin(t / 130 + i * 0.35) * 2.8, sy + i);
+      }
+      ctx.stroke();
+      // drip bead at tip
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#89CFF0';
+      ctx.beginPath();
+      const tipX = sx + Math.sin(t / 130 + len * 0.35) * 2.8;
+      ctx.arc(tipX, sy + len + 5, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 
@@ -100,29 +158,104 @@ export class UI {
 
   renderContainer(ctx, container, fillRatio) {
     ctx.save();
-    ctx.strokeStyle = '#89A8AA';
-    ctx.lineWidth = 10;
-    ctx.lineCap = 'round';
-    for (const w of container.walls) {
-      ctx.beginPath();
-      ctx.moveTo(w.x1, w.y1);
-      ctx.lineTo(w.x2, w.y2);
-      ctx.stroke();
+    const cw = container.cupWidth;
+    const ch = container.cupHeight;
+    const top = container.cupTop;
+    const bot = top + ch;
+    const cx = container.cx;
+    const left = cx - cw / 2;
+    const right = cx + cw / 2;
+
+    // water fill (clipped to cup interior)
+    if (fillRatio > 0) {
+      ctx.save();
+      const clipPath = new Path2D();
+      clipPath.rect(left + 6, top, cw - 12, ch);
+      ctx.clip(clipPath);
+      const fillH = ch * Math.min(fillRatio, 1);
+      const grad = ctx.createLinearGradient(left, bot - fillH, left, bot);
+      grad.addColorStop(0, 'rgba(137,207,240,0.25)');
+      grad.addColorStop(1, 'rgba(100,180,230,0.45)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(left + 6, bot - fillH, cw - 12, fillH);
+      ctx.restore();
     }
-    ctx.strokeStyle = '#999';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 5]);
-    const z = container.fillZone;
+
+    // cup body outline – left wall, right wall, bottom
+    ctx.strokeStyle = '#7AADB0';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(z.x + 10, container.fillLineY);
-    ctx.lineTo(z.x + z.width - 10, container.fillLineY);
+    ctx.moveTo(left, top);
+    ctx.lineTo(left, bot - 12);
+    ctx.quadraticCurveTo(left, bot, left + 12, bot);
+    ctx.lineTo(right - 12, bot);
+    ctx.quadraticCurveTo(right, bot, right, bot - 12);
+    ctx.lineTo(right, top);
+    ctx.stroke();
+
+    // subtle cup body fill (transparent)
+    ctx.fillStyle = 'rgba(230,245,255,0.18)';
+    ctx.beginPath();
+    ctx.rect(left + 4, top, cw - 8, ch);
+    ctx.fill();
+
+    // lid (slightly wider than body)
+    const lidW = cw + 14;
+    const lidH = 16;
+    const lidX = cx - lidW / 2;
+    const lidTop = top - lidH;
+    ctx.fillStyle = '#C8B89A';
+    ctx.beginPath();
+    ctx.roundRect(lidX, lidTop, lidW, lidH, [8, 8, 2, 2]);
+    ctx.fill();
+    ctx.strokeStyle = '#8B9E9E';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // dome cap on lid
+    const domeW = 34, domeH = 9;
+    ctx.fillStyle = '#B8A485';
+    ctx.beginPath();
+    ctx.roundRect(cx - domeW / 2, lidTop - domeH, domeW, domeH + 3, [6, 6, 0, 0]);
+    ctx.fill();
+    ctx.strokeStyle = '#8B9E9E';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // straw
+    ctx.strokeStyle = '#FFB6C1';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx + 8, lidTop - domeH + 2);
+    ctx.lineTo(cx + 26, top - 72);
+    ctx.stroke();
+    // straw tip highlight
+    ctx.strokeStyle = '#ffcfe0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + 9, lidTop - domeH + 4);
+    ctx.lineTo(cx + 27, top - 70);
+    ctx.stroke();
+
+    // fill line (dashed)
+    ctx.strokeStyle = 'rgba(80,140,180,0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(left + 12, container.fillLineY);
+    ctx.lineTo(right - 12, container.fillLineY);
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // face emoji inside cup
     const face = this._getFace(fillRatio);
-    ctx.font = '32px sans-serif';
+    ctx.font = '26px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(face, container.faceX, container.faceY + 30);
+    ctx.fillText(face, container.faceX, container.faceY);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     ctx.restore();

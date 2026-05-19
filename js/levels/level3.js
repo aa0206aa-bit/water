@@ -1,29 +1,33 @@
-// Level 3: Pipe has a gap mid-way, and the exit pipe goes wrong direction.
-// Player needs two lines: one to bridge the gap, one to redirect to container.
+// Level 3: 管道中段有缺口 + 右落管偏離杯子，需畫兩條線
+// 線1: 橋接缺口(x=180→290, y=260)  線2: 把右落管水流導向左側杯子
+// 水路: 水源(80,80) → 落至(80,260) → 架至(180,260) → [玩家橋1] → 架至(290,260) → 架至(380,260) → 落管至(380,450) → [玩家斜滑2] → 杯口(170~270, y=480)
 export const level3 = {
   id: 3,
   name: '精準導流',
-  maxInk: 360,
+  maxInk: 380,
   particleCount: 60,
-  fillThreshold: 28,
-  source: { x: 80, y: 70 },
+  fillThreshold: 24,
+  source: { x: 80, y: 80 },
   walls: [
-    { x1: 30,  y1: 140, x2: 30,  y2: 260 },  // left drop pipe
-    { x1: 30,  y1: 260, x2: 170, y2: 260 },  // left pipe section
-    // Gap x=170 to x=280 — player bridges it
-    { x1: 280, y1: 260, x2: 450, y2: 260 },  // right pipe section
-    { x1: 450, y1: 260, x2: 450, y2: 460 },  // right drop pipe
-    // Water exits right pipe going down toward bottom-right — player redirects left
+    { x1: 80,  y1: 100, x2: 80,  y2: 260 },  // 左垂直管
+    { x1: 80,  y1: 260, x2: 180, y2: 260 },  // 左段水平
+    // 缺口 x=180~290 ← 玩家畫線1橋接
+    { x1: 290, y1: 260, x2: 380, y2: 260 },  // 右段水平
+    { x1: 380, y1: 260, x2: 380, y2: 450 },  // 右落管
+    // 水落至(380,450) ← 玩家畫線2導向左邊杯子
   ],
   container: {
-    cx: 200, cy: 600,
+    cx: 210,
+    cupWidth: 100,
+    cupHeight: 200,
+    cupTop: 480,
     walls: [
-      { x1:  90, y1: 510, x2: 145, y2: 670 },
-      { x1: 310, y1: 510, x2: 255, y2: 670 },
-      { x1: 145, y1: 670, x2: 255, y2: 670 },
+      { x1: 160, y1: 480, x2: 160, y2: 680 },
+      { x1: 260, y1: 480, x2: 260, y2: 680 },
+      { x1: 160, y1: 680, x2: 260, y2: 680 },
     ],
-    fillZone: { x: 98, y: 555, width: 204, height: 110 },
-    fillLineY: 560,
-    faceX: 200, faceY: 600,
+    fillZone: { x: 166, y: 554, width: 88, height: 126 },
+    fillLineY: 562,
+    faceX: 210, faceY: 606,
   },
 };

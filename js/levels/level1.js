@@ -1,27 +1,28 @@
-// Level 1: Water falls from top-left, hits a shelf.
-// Player draws one diagonal line from shelf edge → container.
+// Level 1: 水從左上水源落下，玩家畫一條斜滑道導入杯子（教學關）
+// 水路: 水源(130,80) → 垂直管落至(130,270) → 水平架至(240,270) → 玩家畫斜滑道 → 杯口(290~390, y=420)
 export const level1 = {
   id: 1,
   name: '初識水流',
-  maxInk: 280,
+  maxInk: 300,
   particleCount: 60,
-  fillThreshold: 32,
-  source: { x: 100, y: 70 },
-  // Pre-built static walls (rendered as teal pipes)
+  fillThreshold: 28,
+  source: { x: 130, y: 80 },
   walls: [
-    { x1: 30,  y1: 130, x2: 30,  y2: 280 },  // left vertical pipe
-    { x1: 30,  y1: 280, x2: 240, y2: 280 },  // horizontal shelf
+    { x1: 130, y1: 100, x2: 130, y2: 270 },  // 左垂直管
+    { x1: 130, y1: 270, x2: 240, y2: 270 },  // 水平架
   ],
-  // Triangular container (open top): two angled sides + flat bottom
   container: {
-    cx: 320, cy: 580,
+    cx: 340,
+    cupWidth: 100,
+    cupHeight: 210,
+    cupTop: 430,
     walls: [
-      { x1: 210, y1: 490, x2: 270, y2: 650 },  // left side
-      { x1: 430, y1: 490, x2: 370, y2: 650 },  // right side
-      { x1: 270, y1: 650, x2: 370, y2: 650 },  // bottom
+      { x1: 290, y1: 430, x2: 290, y2: 640 },
+      { x1: 390, y1: 430, x2: 390, y2: 640 },
+      { x1: 290, y1: 640, x2: 390, y2: 640 },
     ],
-    fillZone: { x: 218, y: 535, width: 184, height: 110 },
-    fillLineY: 540,
-    faceX: 320, faceY: 580,
+    fillZone: { x: 296, y: 508, width: 88, height: 132 },
+    fillLineY: 518,
+    faceX: 340, faceY: 568,
   },
 };

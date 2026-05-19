@@ -1,16 +1,15 @@
 export class DrawingSystem {
-  // Single instance per canvas lifetime — no destroy() needed.
-  // reset() clears stroke state between levels without rebinding events.
   constructor(canvas, physics) {
     this.canvas = canvas;
     this.physics = physics;
-    this.strokes = [];       // [{id, bodies, points, inkUsed}]
+    this.strokes = [];
     this.currentPoints = [];
     this.isDrawing = false;
     this.enabled = true;
     this.maxInk = 300;
     this.inkUsed = 0;
     this._nextId = 0;
+    this.autoMakeDynamic = false;
     this._bindEvents();
   }
 
@@ -45,18 +44,26 @@ export class DrawingSystem {
   _onMove({ x, y }) {
     if (!this.isDrawing) return;
     const last = this.currentPoints[this.currentPoints.length - 1];
-    if ((x - last.x) ** 2 + (y - last.y) ** 2 >= 25) {
+    // lowered threshold: 3px minimum between sample points (was 5px)
+    if ((x - last.x) ** 2 + (y - last.y) ** 2 >= 9) {
       this.currentPoints.push({ x, y });
     }
+  }
+
+  // Returns true (once) if the last pointer-up created a stroke — use to suppress toggle.
+  consumeJustDrew() {
+    const v = Boolean(this._justDrew);
+    this._justDrew = false;
+    return v;
   }
 
   _onEnd() {
     if (!this.isDrawing) return;
     this.isDrawing = false;
+    this._justDrew = false;
     const pts = this.currentPoints;
     if (pts.length < 2) { this.currentPoints = []; return; }
 
-    // Calculate total length of this stroke
     let totalLen = 0;
     for (let i = 0; i < pts.length - 1; i++) {
       totalLen += Math.hypot(pts[i+1].x - pts[i].x, pts[i+1].y - pts[i].y);
@@ -77,18 +84,32 @@ export class DrawingSystem {
       inkUsed += segLen;
       usedPts.push(pts[i + 1]);
       const body = this.physics.addStaticSegment(pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, 6, `stroke_${id}`);
-      if (body) bodies.push(body);
+      if (body) {
+        // store half-length for dynamic rendering after lift
+        const dx = pts[i+1].x - pts[i].x, dy = pts[i+1].y - pts[i].y;
+        body._halfLen = Math.sqrt(dx*dx + dy*dy) / 2;
+        bodies.push(body);
+      }
     }
 
     if (bodies.length === 0) { this.currentPoints = []; return; }
     this.inkUsed = Math.min(this.inkUsed + inkUsed, this.maxInk);
-    this.strokes.push({ id, bodies, points: usedPts, inkUsed });
+    const stroke = { id, bodies, points: usedPts, inkUsed, isDynamic: false };
+    this.strokes.push(stroke);
     this.currentPoints = [];
+    this._justDrew = true;
+
+    // in flowing phase: immediately release line to gravity on finger lift
+    if (this.autoMakeDynamic) {
+      stroke.isDynamic = true;
+      stroke.bodies.forEach(b => this.physics.makeDynamic(b));
+    }
   }
 
   _hitTest(x, y) {
     for (let i = this.strokes.length - 1; i >= 0; i--) {
       const stroke = this.strokes[i];
+      if (stroke.isDynamic) continue;
       const pts = stroke.points;
       for (let i2 = 0; i2 < pts.length - 1; i2++) {
         if (this._nearSeg(x, y, pts[i2].x, pts[i2].y, pts[i2+1].x, pts[i2+1].y, 14)) return stroke;
@@ -110,25 +131,76 @@ export class DrawingSystem {
     this.strokes = this.strokes.filter(s => s.id !== stroke.id);
   }
 
+  makeAllDynamic() {
+    this.autoMakeDynamic = true;
+    this.strokes.forEach(stroke => {
+      if (!stroke.isDynamic) {
+        stroke.isDynamic = true;
+        stroke.bodies.forEach(b => this.physics.makeDynamic(b));
+      }
+    });
+  }
+
+  // call each frame to remove strokes that have fallen off canvas
+  update(canvasH) {
+    this.strokes = this.strokes.filter(stroke => {
+      if (!stroke.isDynamic) return true;
+      const allGone = stroke.bodies.every(b => b.position.y > canvasH + 60);
+      if (allGone) {
+        stroke.bodies.forEach(b => this.physics.removeBody(b));
+        this.inkUsed = Math.max(0, this.inkUsed - stroke.inkUsed);
+        return false;
+      }
+      return true;
+    });
+  }
+
   render(ctx) {
+    ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = '#C8A882';
+
     for (const stroke of this.strokes) {
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      stroke.points.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
-      ctx.stroke();
+      if (stroke.isDynamic) {
+        // render each segment at its current physics position
+        for (const body of stroke.bodies) {
+          const { x, y } = body.position;
+          const hl = body._halfLen || 20;
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(body.angle);
+          ctx.globalAlpha = 0.75;
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#C8A882';
+          ctx.beginPath();
+          ctx.moveTo(-hl, 0);
+          ctx.lineTo(hl, 0);
+          ctx.stroke();
+          ctx.restore();
+        }
+      } else {
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#C8A882';
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        stroke.points.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.stroke();
+      }
     }
+
+    // preview line while drawing
     if (this.isDrawing && this.currentPoints.length > 1) {
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = 0.45;
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#C8A882';
       ctx.beginPath();
       ctx.moveTo(this.currentPoints[0].x, this.currentPoints[0].y);
       this.currentPoints.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
       ctx.stroke();
-      ctx.globalAlpha = 1;
     }
+
+    ctx.restore();
   }
 
   reset() {
@@ -137,6 +209,7 @@ export class DrawingSystem {
     this.inkUsed = 0;
     this.isDrawing = false;
     this.currentPoints = [];
+    this.autoMakeDynamic = false;
   }
 
   setEnabled(v) { this.enabled = v; }

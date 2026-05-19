@@ -63,6 +63,11 @@ export class PhysicsEngine {
     toRemove.forEach(b => World.remove(this.world, b));
   }
 
+  makeDynamic(body) {
+    Matter.Body.setStatic(body, false);
+    Matter.Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.04);
+  }
+
   step(delta) {
     Engine.update(this.engine, delta);
   }

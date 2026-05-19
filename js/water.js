@@ -5,6 +5,7 @@ export class WaterSystem {
     this.physics = physics;
     this.particles = [];
     this.triggered = false;
+    this.paused = false;
     this.totalCount = 60;
     this.spawned = 0;
     this.spawnTimer = 0;
@@ -20,6 +21,12 @@ export class WaterSystem {
     if (!this.triggered) this.triggered = true;
   }
 
+  setFlowing(active) {
+    if (active && !this.triggered) this.triggered = true;
+    this.paused = !active;
+  }
+
+  isFlowing() { return this.triggered && !this.paused; }
   isTriggered() { return this.triggered; }
 
   isDone() { return this.spawned >= this.totalCount; }
@@ -33,7 +40,7 @@ export class WaterSystem {
   }
 
   update(delta) {
-    if (!this.triggered) return;
+    if (!this.triggered || this.paused) return;
     this.spawnTimer += delta;
     while (this.spawnTimer >= SPAWN_INTERVAL && this.spawned < this.totalCount) {
       const jitter = (Math.random() - 0.5) * 10;
@@ -85,10 +92,10 @@ export class WaterSystem {
   }
 
   reset() {
-    // Resets runtime state only; configure() values (source, totalCount) are preserved.
     this.particles.forEach(b => this.physics.removeBody(b));
     this.particles = [];
     this.triggered = false;
+    this.paused = false;
     this.spawned = 0;
     this.spawnTimer = 0;
   }

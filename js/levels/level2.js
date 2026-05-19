@@ -1,28 +1,30 @@
-// Level 2: Water falls from top-center.
-// A horizontal blocker diverts it. Player must bridge to the right container.
+// Level 2: 中間有垂直擋板，玩家畫對角線越過擋板落入右邊水平導板，再滑入杯子
+// 水路: 水源(100,80) → 管落至(100,260) → 架至(200,260) → 玩家畫斜滑道 → 右導板(300,360) → 流入杯口
 export const level2 = {
   id: 2,
   name: '繞過障礙',
   maxInk: 320,
   particleCount: 60,
-  fillThreshold: 32,
-  source: { x: 80, y: 70 },
+  fillThreshold: 28,
+  source: { x: 100, y: 80 },
   walls: [
-    { x1: 30,  y1: 200, x2: 30,  y2: 330 },  // left vertical
-    { x1: 30,  y1: 330, x2: 200, y2: 330 },  // left shelf
-    // Gap here (x=200 to x=290) — player bridges it
-    { x1: 290, y1: 250, x2: 290, y2: 400 },  // right vertical blocker
-    { x1: 290, y1: 400, x2: 450, y2: 400 },  // right shelf
+    { x1: 100, y1: 100, x2: 100, y2: 260 },  // 左垂直管
+    { x1: 100, y1: 260, x2: 200, y2: 260 },  // 左水平架
+    { x1: 300, y1: 100, x2: 300, y2: 360 },  // 垂直擋板
+    { x1: 300, y1: 360, x2: 400, y2: 360 },  // 右導板（水流向右後落下）
   ],
   container: {
-    cx: 370, cy: 590,
+    cx: 360,
+    cupWidth: 100,
+    cupHeight: 210,
+    cupTop: 420,
     walls: [
-      { x1: 260, y1: 500, x2: 315, y2: 660 },
-      { x1: 480, y1: 500, x2: 425, y2: 660 },
-      { x1: 315, y1: 660, x2: 425, y2: 660 },
+      { x1: 310, y1: 420, x2: 310, y2: 630 },
+      { x1: 410, y1: 420, x2: 410, y2: 630 },
+      { x1: 310, y1: 630, x2: 410, y2: 630 },
     ],
-    fillZone: { x: 268, y: 545, width: 204, height: 110 },
-    fillLineY: 550,
-    faceX: 370, faceY: 590,
+    fillZone: { x: 316, y: 498, width: 88, height: 132 },
+    fillLineY: 508,
+    faceX: 360, faceY: 558,
   },
 };
