@@ -46,6 +46,14 @@ function loadLevel(index) {
   state = STATES.DRAWING;
   flowEndTimer = 0;
 
+  // 加載滑水道（低摩擦，讓水順滑）
+  const allSlides = currentLevel.slides || (currentLevel.slide ? [currentLevel.slide] : []);
+  allSlides.forEach(pts => {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const seg = physics.addStaticSegment(pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, 10, 'slide_wall');
+      if (seg) seg.friction = 0.05; // 滑道低摩擦
+    }
+  });
   currentLevel.walls.forEach(w => {
     physics.addStaticSegment(w.x1, w.y1, w.x2, w.y2, w.thickness || 10, 'level_wall');
   });
@@ -131,6 +139,8 @@ function gameLoop(timestamp) {
   drawGrid();
 
   if (currentLevel) {
+    const allSlides = currentLevel.slides || (currentLevel.slide ? [currentLevel.slide] : []);
+    allSlides.forEach(pts => ui.renderSlide(ctx, pts));
     ui.renderWalls(ctx, currentLevel.walls);
     const fillRatio = calcFillRatio();
     ui.renderContainer(ctx, currentLevel.container, fillRatio);

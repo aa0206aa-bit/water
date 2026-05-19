@@ -142,6 +142,35 @@ export class UI {
     ctx.restore();
   }
 
+  // 滑水道：半透明藍色水道 + 護欄線
+  renderSlide(ctx, points) {
+    if (!points || points.length < 2) return;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const drawPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    };
+    // 水道底色
+    drawPath();
+    ctx.strokeStyle = 'rgba(137,207,240,0.20)';
+    ctx.lineWidth = 30;
+    ctx.stroke();
+    // 滑道面（主線）
+    drawPath();
+    ctx.strokeStyle = '#7AADB0';
+    ctx.lineWidth = 8;
+    ctx.stroke();
+    // 高光邊
+    drawPath();
+    ctx.strokeStyle = 'rgba(210,242,246,0.72)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   renderWalls(ctx, walls) {
     ctx.save();
     ctx.strokeStyle = '#89A8AA';
@@ -158,6 +187,12 @@ export class UI {
 
   renderContainer(ctx, container, fillRatio) {
     ctx.save();
+    if (container.funnelTopY !== undefined) {
+      this._renderFunnel(ctx, container, fillRatio);
+      ctx.restore();
+      return;
+    }
+    // ── 舊版圓柱杯（backward compat）──
     const cw = container.cupWidth;
     const ch = container.cupHeight;
     const top = container.cupTop;
@@ -259,6 +294,81 @@ export class UI {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     ctx.restore();
+  }
+
+  _renderFunnel(ctx, container, fillRatio) {
+    const { cx, funnelTopY: fTop, funnelTopWidth, cupTop, cupWidth, cupHeight } = container;
+    const fLeft = cx - funnelTopWidth / 2, fRight = cx + funnelTopWidth / 2;
+    const cLeft = cx - cupWidth / 2, cRight = cx + cupWidth / 2;
+    const cBot = cupTop + cupHeight;
+
+    // 水位填充（裁切至漏斗+杯身輪廓）
+    if (fillRatio > 0) {
+      ctx.save();
+      const clip = new Path2D();
+      clip.moveTo(fLeft, fTop);
+      clip.lineTo(fRight, fTop);
+      clip.lineTo(cRight, cupTop);
+      clip.lineTo(cRight, cBot);
+      clip.lineTo(cLeft, cBot);
+      clip.lineTo(cLeft, cupTop);
+      clip.closePath();
+      ctx.clip(clip);
+      const totalH = cBot - fTop;
+      const fillH = totalH * Math.min(fillRatio, 1);
+      const grad = ctx.createLinearGradient(0, cBot - fillH, 0, cBot);
+      grad.addColorStop(0, 'rgba(137,207,240,0.20)');
+      grad.addColorStop(1, 'rgba(100,180,230,0.42)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(fLeft - 5, cBot - fillH, funnelTopWidth + 10, fillH);
+      ctx.restore();
+    }
+
+    ctx.strokeStyle = '#7AADB0';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    // 左漏斗壁
+    ctx.beginPath(); ctx.moveTo(fLeft, fTop); ctx.lineTo(cLeft, cupTop); ctx.stroke();
+    // 右漏斗壁
+    ctx.beginPath(); ctx.moveTo(fRight, fTop); ctx.lineTo(cRight, cupTop); ctx.stroke();
+    // 左杯身（底部圓角）
+    ctx.beginPath();
+    ctx.moveTo(cLeft, cupTop);
+    ctx.lineTo(cLeft, cBot - 12);
+    ctx.quadraticCurveTo(cLeft, cBot, cLeft + 12, cBot);
+    ctx.stroke();
+    // 右杯身
+    ctx.beginPath();
+    ctx.moveTo(cRight, cupTop);
+    ctx.lineTo(cRight, cBot - 12);
+    ctx.quadraticCurveTo(cRight, cBot, cRight - 12, cBot);
+    ctx.stroke();
+    // 底部
+    ctx.beginPath(); ctx.moveTo(cLeft + 12, cBot); ctx.lineTo(cRight - 12, cBot); ctx.stroke();
+
+    // 漏斗頂端開口裝飾線
+    ctx.strokeStyle = '#89BCBE';
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(fLeft - 5, fTop); ctx.lineTo(fRight + 5, fTop); ctx.stroke();
+
+    // 填充線（虛線）
+    ctx.strokeStyle = 'rgba(80,140,180,0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cLeft + 8, container.fillLineY);
+    ctx.lineTo(cRight - 8, container.fillLineY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 表情
+    ctx.font = '26px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this._getFace(fillRatio), container.faceX, container.faceY);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
   }
 
   _getFace(ratio) {
