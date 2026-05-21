@@ -64,6 +64,11 @@
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
 
+    const bgImg = new Image();
+    bgImg.src = '背景.png';
+    let bgLoaded = false;
+    bgImg.onload = () => { bgLoaded = true; };
+
     function roundRect(x, y, w, h, r) {
       ctx.beginPath();
       ctx.moveTo(x + r, y);
@@ -93,15 +98,18 @@
     window.addEventListener('resize', resize);
 
     function drawBackground() {
-      ctx.fillStyle = C.bg;
+      if (bgLoaded) {
+        const iw = bgImg.naturalWidth, ih = bgImg.naturalHeight;
+        const scale = Math.max(LW / iw, LH / ih);
+        const dw = iw * scale, dh = ih * scale;
+        ctx.drawImage(bgImg, (LW - dw) / 2, (LH - dh) / 2, dw, dh);
+      } else {
+        ctx.fillStyle = C.bg;
+        ctx.fillRect(0, 0, LW, LH);
+      }
+      // 白霧層：讓遊戲元素更清晰
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
       ctx.fillRect(0, 0, LW, LH);
-      ctx.fillStyle = 'rgba(180,160,140,0.12)';
-      for (let x = 20; x < LW; x += 20)
-        for (let y = 20; y < LH; y += 20) {
-          ctx.beginPath();
-          ctx.arc(x, y, 1, 0, Math.PI * 2);
-          ctx.fill();
-        }
     }
 
     function drawMachine() {
