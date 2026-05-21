@@ -21,8 +21,57 @@
 <body>
   <canvas id="game"></canvas>
   <script>
+    // 佈局座標（邏輯像素）
+    const MACHINE     = { x: 80,  y: 60,  w: 230, h: 180 };
+    const SLIDE_START = { x: 75,  y: 185 };
+    const SLIDE_END   = { x: 200, y: 435 };
+    const CUP         = { x: 145, y: 445, w: 100, h: 120 };
+
+    // 顏色
+    const C = {
+      bg:         '#f5f0eb',
+      machineFill:'#e8e0d8',
+      gold:       '#c9a84c',
+      water:      '#7ec8e3',
+      cupStroke:  'rgba(160,210,240,0.9)',
+      targetLine: '#ff6b6b',
+      text:       '#5a4a3a',
+    };
+
+    // 遊戲規則
+    const FILL_RATE    = 0.002;
+    const TARGET_LEVEL = 0.6;
+    const TOLERANCE    = 0.05;
+
+    // 遊戲狀態
+    const state = {
+      fillLevel:  0,
+      gameState:  'READY',
+      isPouring:  false,
+      loseReason: '',   // 'overflow' | 'tooLittle'
+      particles:  [],
+      splashes:   [],
+      time:       0,
+      waveAmp:    0,
+      winTime:    0,
+    };
+
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
     const DPR = window.devicePixelRatio || 1;
     const LW = 390;
     const LH = 844;
@@ -38,8 +87,461 @@
     resize();
     window.addEventListener('resize', resize);
 
+    function drawBackground() {
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(0, 0, LW, LH);
+      ctx.fillStyle = 'rgba(180,160,140,0.12)';
+      for (let x = 20; x < LW; x += 20)
+        for (let y = 20; y < LH; y += 20) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+    }
+
+    function drawMachine() {
+      const { x, y, w, h } = MACHINE;
+      const g = ctx.createLinearGradient(x, y, x + w, y + h);
+      g.addColorStop(0, '#ede5da');
+      g.addColorStop(1, '#d4cbbf');
+      roundRect(x, y, w, h, 20);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.strokeStyle = C.gold;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      roundRect(x + 65, y + 12, 140, 38, 10);
+      ctx.fillStyle = '#3a3230';
+      ctx.fill();
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillStyle = '#f0d070';
+      ctx.textAlign = 'center';
+      ctx.fillText('接水樂園', x + 135, y + 28);
+      ctx.font = '9px sans-serif';
+      ctx.fillStyle = '#9a8a70';
+      ctx.fillText('WATER PARK', x + 135, y + 42);
+
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = C.text;
+      ctx.textAlign = 'center';
+      ctx.fillText('ON', x + 18, y + 40);
+      ctx.fillText('開', x + 18, y + 54);
+
+      roundRect(x + 30, y + 95, 50, 50, 10);
+      ctx.fillStyle = '#f0ebe3';
+      ctx.fill();
+      ctx.strokeStyle = C.gold;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + 55, y + 125, 8, 0, Math.PI * 2);
+      ctx.fillStyle = C.water;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(SLIDE_START.x, SLIDE_START.y, 12, 0, Math.PI * 2);
+      ctx.fillStyle = '#ccc4b8';
+      ctx.fill();
+      ctx.strokeStyle = C.gold;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    function drawSlide() {
+      const sx = SLIDE_START.x, sy = SLIDE_START.y;
+      const ex = SLIDE_END.x,   ey = SLIDE_END.y;
+      const sw = 22;
+      const len = Math.hypot(ex - sx, ey - sy);
+      const nx = -(ey - sy) / len;
+      const ny =  (ex - sx) / len;
+
+      ctx.beginPath();
+      ctx.moveTo(sx + nx * sw / 2, sy + ny * sw / 2);
+      ctx.lineTo(ex + nx * sw / 2, ey + ny * sw / 2);
+      ctx.lineTo(ex - nx * sw / 2, ey - ny * sw / 2);
+      ctx.lineTo(sx - nx * sw / 2, sy - ny * sw / 2);
+      ctx.closePath();
+
+      const g = ctx.createLinearGradient(sx, sy, ex, ey);
+      g.addColorStop(0, '#d8d0c5');
+      g.addColorStop(1, '#c5bdb2');
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.strokeStyle = C.gold;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    function drawCup() {
+      const { x, y, w, h } = CUP;
+      const r = 12;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + h - r);
+      ctx.quadraticCurveTo(x, y + h, x + r, y + h);
+      ctx.lineTo(x + w - r, y + h);
+      ctx.quadraticCurveTo(x + w, y + h, x + w, y + h - r);
+      ctx.lineTo(x + w, y);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(230,245,255,0.3)';
+      ctx.fill();
+      ctx.strokeStyle = C.cupStroke;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    function drawTargetLine() {
+      const { x, y, w, h } = CUP;
+      const lineY = y + h * (1 - TARGET_LEVEL);
+      ctx.save();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = C.targetLine;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 6, lineY);
+      ctx.lineTo(x + w - 6, lineY);
+      ctx.stroke();
+      ctx.restore();
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = C.targetLine;
+      ctx.textAlign = 'right';
+      ctx.fillText('目標', x - 5, lineY + 4);
+    }
+
+    function updateWater() {
+      if (state.isPouring && state.gameState === 'PLAYING') {
+        state.fillLevel = Math.min(1, state.fillLevel + FILL_RATE);
+        state.waveAmp = Math.min(6, state.waveAmp + 0.5);
+        if (state.fillLevel >= 1) {
+          state.gameState  = 'GAME_OVER';
+          state.loseReason = 'overflow';
+          state.isPouring  = false;
+        }
+      } else {
+        state.waveAmp = Math.max(0, state.waveAmp - 0.15);
+      }
+      if (state.gameState === 'WIN') state.winTime += 1 / 60;
+    }
+
+    function drawWater() {
+      if (state.fillLevel <= 0) return;
+      const { x, y, w, h } = CUP;
+      const r = 12;
+      const waterTop = y + h * (1 - state.fillLevel);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x + 3, y);
+      ctx.lineTo(x + 3, y + h - r);
+      ctx.quadraticCurveTo(x + 3, y + h - 3, x + r, y + h - 3);
+      ctx.lineTo(x + w - r, y + h - 3);
+      ctx.quadraticCurveTo(x + w - 3, y + h - 3, x + w - 3, y + h - r);
+      ctx.lineTo(x + w - 3, y);
+      ctx.closePath();
+      ctx.clip();
+
+      ctx.beginPath();
+      ctx.moveTo(x + 3, waterTop);
+      for (let px = x + 3; px <= x + w - 3; px++) {
+        const wy = waterTop + Math.sin((px - x) * 0.1 + state.time * 3) * state.waveAmp;
+        ctx.lineTo(px, wy);
+      }
+      ctx.lineTo(x + w - 3, y + h);
+      ctx.lineTo(x + 3, y + h);
+      ctx.closePath();
+
+      const g = ctx.createLinearGradient(x, waterTop, x, y + h);
+      g.addColorStop(0, 'rgba(126,200,227,0.8)');
+      g.addColorStop(1, 'rgba(80,160,205,0.92)');
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function spawnParticles() {
+      for (let i = 0; i < 2; i++) {
+        state.particles.push({
+          x: SLIDE_END.x + (Math.random() - 0.5) * 6,
+          y: SLIDE_END.y,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: 1 + Math.random() * 2,
+          r: 4 + Math.random() * 4,
+          life: 0,
+          maxLife: 20 + Math.random() * 15,
+        });
+      }
+      if (state.particles.length > 30)
+        state.particles.splice(0, state.particles.length - 30);
+    }
+
+    function spawnSplash(x, y) {
+      for (let i = 0; i < 3; i++) {
+        state.splashes.push({
+          x: x + (Math.random() - 0.5) * 10,
+          y,
+          r: 2,
+          maxR: 8 + Math.random() * 6,
+          life: 0,
+          maxLife: 18,
+        });
+      }
+    }
+
+    function updateParticles() {
+      if (state.isPouring && state.gameState === 'PLAYING') spawnParticles();
+      const { x: cx, y: cy, w: cw, h: ch } = CUP;
+      const waterTop = cy + ch * (1 - state.fillLevel);
+      state.particles = state.particles.filter(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life++;
+        if (p.y >= waterTop && p.x > cx && p.x < cx + cw) {
+          spawnSplash(p.x, waterTop);
+          return false;
+        }
+        return p.life < p.maxLife;
+      });
+      state.splashes = state.splashes.filter(s => {
+        s.r += (s.maxR - s.r) * 0.2; s.life++;
+        return s.life < s.maxLife;
+      });
+    }
+
+    function drawParticles() {
+      state.particles.forEach(p => {
+        const a = (1 - p.life / p.maxLife) * 0.7;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(126,200,227,${a.toFixed(2)})`;
+        ctx.fill();
+      });
+      state.splashes.forEach(s => {
+        const a = (1 - s.life / s.maxLife) * 0.8;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(180,220,240,${a.toFixed(2)})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+    }
+
+    function drawStar(cx, cy, outerR, innerR, points) {
+      ctx.beginPath();
+      for (let i = 0; i < points * 2; i++) {
+        const angle = (i * Math.PI) / points - Math.PI / 2;
+        const r = i % 2 === 0 ? outerR : innerR;
+        const m = i === 0 ? 'moveTo' : 'lineTo';
+        ctx[m](cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+      }
+      ctx.closePath();
+    }
+
+    function drawFace() {
+      const { x, y, w, h } = CUP;
+      const cx = x + w / 2;
+      const fy = y + h * 0.67;
+      const es = 12;
+
+      let expr;
+      if      (state.gameState === 'WIN')       expr = 'star';
+      else if (state.gameState === 'GAME_OVER') expr = 'dizzy';
+      else if (state.fillLevel >= 0.85)         expr = 'panic';
+      else if (state.fillLevel >= 0.6)          expr = 'nervous';
+      else                                       expr = 'happy';
+
+      if (expr === 'star') {
+        ctx.fillStyle = '#f0c030';
+        drawStar(cx - es, fy - 5, 6, 3, 5); ctx.fill();
+        drawStar(cx + es, fy - 5, 6, 3, 5); ctx.fill();
+      } else if (expr === 'dizzy') {
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+        const d = 4;
+        [[cx - es, fy - 6], [cx + es, fy - 6]].forEach(([ex, ey]) => {
+          ctx.beginPath();
+          ctx.moveTo(ex - d, ey - d); ctx.lineTo(ex + d, ey + d);
+          ctx.moveTo(ex + d, ey - d); ctx.lineTo(ex - d, ey + d);
+          ctx.stroke();
+        });
+      } else {
+        ctx.fillStyle = '#333';
+        ctx.beginPath();
+        ctx.arc(cx - es, fy - 6, 4, 0, Math.PI * 2);
+        ctx.arc(cx + es, fy - 6, 4, 0, Math.PI * 2);
+        ctx.fill();
+        if (expr === 'panic') {
+          ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(cx - es, fy - 6, 6, 0, Math.PI * 2);
+          ctx.arc(cx + es, fy - 6, 6, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      ctx.strokeStyle = '#444'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      if (expr === 'happy' || expr === 'star') {
+        ctx.beginPath();
+        ctx.arc(cx, fy + 2, 9, 0, Math.PI);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,150,150,0.45)';
+        ctx.beginPath(); ctx.ellipse(cx - 18, fy + 4, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(cx + 18, fy + 4, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
+      } else if (expr === 'nervous') {
+        ctx.beginPath();
+        ctx.moveTo(cx - 9, fy + 8);
+        ctx.quadraticCurveTo(cx - 4, fy + 5, cx, fy + 8);
+        ctx.quadraticCurveTo(cx + 4, fy + 11, cx + 9, fy + 8);
+        ctx.stroke();
+      } else if (expr === 'panic') {
+        ctx.beginPath();
+        ctx.arc(cx, fy + 9, 7, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (expr === 'dizzy') {
+        ctx.beginPath();
+        ctx.arc(cx, fy + 14, 9, Math.PI, 0);
+        ctx.stroke();
+      }
+    }
+
+    function resetGame() {
+      state.fillLevel  = 0;
+      state.gameState  = 'READY';
+      state.isPouring  = false;
+      state.loseReason = '';
+      state.particles  = [];
+      state.splashes   = [];
+      state.waveAmp    = 0;
+      state.winTime    = 0;
+    }
+
+    function checkWinLose() {
+      if (state.gameState !== 'PLAYING') return;
+      if (Math.abs(state.fillLevel - TARGET_LEVEL) <= TOLERANCE) {
+        state.gameState = 'WIN';
+      } else {
+        state.gameState  = 'GAME_OVER';
+        state.loseReason = state.fillLevel < TARGET_LEVEL ? 'tooLittle' : 'overflow';
+      }
+    }
+
+    function getLogicalCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const src = e.touches ? e.touches[0] : e;
+      return {
+        x: (src.clientX - rect.left) * (LW / rect.width),
+        y: (src.clientY - rect.top)  * (LH / rect.height),
+      };
+    }
+
+    function isInButton(lx, ly) {
+      const bx = LW / 2 - 80, by = LH / 2 + 50;
+      return lx >= bx && lx <= bx + 160 && ly >= by && ly <= by + 48;
+    }
+
+    function onPointerDown(e) {
+      e.preventDefault();
+      const { x: lx, y: ly } = getLogicalCoords(e);
+      if (state.gameState === 'WIN' || state.gameState === 'GAME_OVER') {
+        if (isInButton(lx, ly)) resetGame();
+        return;
+      }
+      if (state.gameState === 'READY')   state.gameState = 'PLAYING';
+      if (state.gameState === 'PLAYING') state.isPouring = true;
+    }
+
+    function onPointerUp(e) {
+      e.preventDefault();
+      if (!state.isPouring) return;
+      state.isPouring = false;
+      checkWinLose();
+    }
+
+    canvas.addEventListener('mousedown',   onPointerDown);
+    canvas.addEventListener('mouseup',     onPointerUp);
+    canvas.addEventListener('mouseleave',  onPointerUp);
+    canvas.addEventListener('touchstart',  onPointerDown, { passive: false });
+    canvas.addEventListener('touchend',    onPointerUp,   { passive: false });
+    canvas.addEventListener('touchcancel', onPointerUp,   { passive: false });
+
+    function drawButton(x, y, w, h, label, color) {
+      roundRect(x, y, w, h, 12);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x + w / 2, y + h / 2 + 7);
+    }
+
+    function drawUI() {
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillStyle = C.text;
+      ctx.textAlign = 'center';
+      ctx.fillText('Level 1', LW / 2, 44);
+
+      if (state.gameState === 'READY') {
+        const a = 0.5 + 0.5 * Math.sin(state.time * 3);
+        ctx.globalAlpha = a;
+        ctx.font = '16px sans-serif';
+        ctx.fillStyle = C.text;
+        ctx.textAlign = 'center';
+        ctx.fillText('按住螢幕開始注水', LW / 2, LH - 70);
+        ctx.globalAlpha = 1;
+      }
+
+      if (state.gameState === 'WIN') {
+        ctx.fillStyle = 'rgba(245,240,235,0.88)';
+        ctx.fillRect(0, 0, LW, LH);
+        ctx.font = 'bold 52px sans-serif';
+        ctx.fillStyle = C.text;
+        ctx.textAlign = 'center';
+        ctx.fillText('完成！', LW / 2, LH / 2 - 30);
+        ctx.font = '22px sans-serif';
+        ctx.fillStyle = '#8a7a6a';
+        ctx.fillText('精準到位 🎉', LW / 2, LH / 2 + 20);
+        drawButton(LW / 2 - 80, LH / 2 + 50, 160, 48, '再玩一次', '#7ec8e3');
+      }
+
+      if (state.gameState === 'GAME_OVER') {
+        ctx.fillStyle = 'rgba(245,240,235,0.88)';
+        ctx.fillRect(0, 0, LW, LH);
+        ctx.font = 'bold 52px sans-serif';
+        ctx.fillStyle = '#c05050';
+        ctx.textAlign = 'center';
+        const title = state.loseReason === 'tooLittle' ? '水太少了！' : '水滿了！';
+        const hint  = state.loseReason === 'tooLittle' ? '多撐一會兒' : '放手快一點';
+        ctx.fillText(title, LW / 2, LH / 2 - 30);
+        ctx.font = '22px sans-serif';
+        ctx.fillStyle = '#8a7a6a';
+        ctx.fillText(hint, LW / 2, LH / 2 + 20);
+        drawButton(LW / 2 - 80, LH / 2 + 50, 160, 48, '再試一次', '#e07070');
+      }
+    }
+
     function loop() {
+      state.time += 1 / 60;
+      updateWater();
+      updateParticles();
       ctx.clearRect(0, 0, LW, LH);
+      drawBackground();
+      drawMachine();
+      drawSlide();
+
+      const bounceY = state.gameState === 'WIN'
+        ? -Math.abs(Math.sin(state.winTime * 8)) * 10
+        : 0;
+
+      ctx.save();
+      ctx.translate(0, bounceY);
+      drawWater();
+      drawParticles();
+      drawCup();
+      drawTargetLine();
+      drawFace();
+      ctx.restore();
+
+      drawUI();
       requestAnimationFrame(loop);
     }
     loop();
