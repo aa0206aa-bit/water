@@ -186,7 +186,7 @@
       ctx.stroke();
     }
 
-    function drawCup() {
+    function cupPath() {
       const { x, y, w, h } = CUP;
       const r = 12;
       ctx.beginPath();
@@ -197,8 +197,16 @@
       ctx.quadraticCurveTo(x + w, y + h, x + w, y + h - r);
       ctx.lineTo(x + w, y);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(220,240,255,0.7)';
+    }
+
+    function drawCupFill() {
+      cupPath();
+      ctx.fillStyle = 'rgba(220,240,255,0.45)';
       ctx.fill();
+    }
+
+    function drawCupBorder() {
+      cupPath();
       ctx.strokeStyle = 'rgba(140,200,240,1.0)';
       ctx.lineWidth = 3;
       ctx.stroke();
@@ -565,9 +573,10 @@
 
       ctx.save();
       ctx.translate(0, bounceY);
-      drawWater();
+      drawCupFill();       // 杯底填色先畫（水的底層）
+      drawWater();         // 水在填色之上
       drawParticles();
-      drawCup();
+      drawCupBorder();     // 杯子邊框壓在最上層
       drawTargetLine();
       drawFace();
       ctx.restore();
