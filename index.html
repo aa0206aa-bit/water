@@ -248,36 +248,36 @@
     function drawWater() {
       if (state.fillLevel <= 0) return;
       const { x, y, w, h } = CUP;
-      const r = 12;
+      const pad = 5;
       const waterTop = y + h * (1 - state.fillLevel);
 
-      ctx.save();
+      // 水面波浪 + 水體，直接填色不用 clip
       ctx.beginPath();
-      ctx.moveTo(x + 3, y);
-      ctx.lineTo(x + 3, y + h - r);
-      ctx.quadraticCurveTo(x + 3, y + h - 3, x + r, y + h - 3);
-      ctx.lineTo(x + w - r, y + h - 3);
-      ctx.quadraticCurveTo(x + w - 3, y + h - 3, x + w - 3, y + h - r);
-      ctx.lineTo(x + w - 3, y);
-      ctx.closePath();
-      ctx.clip();
-
-      ctx.beginPath();
-      ctx.moveTo(x + 3, waterTop);
-      for (let px = x + 3; px <= x + w - 3; px++) {
+      ctx.moveTo(x + pad, waterTop);
+      for (let px = x + pad; px <= x + w - pad; px++) {
         const wy = waterTop + Math.sin((px - x) * 0.1 + state.time * 3) * state.waveAmp;
         ctx.lineTo(px, wy);
       }
-      ctx.lineTo(x + w - 3, y + h);
-      ctx.lineTo(x + 3, y + h);
+      ctx.lineTo(x + w - pad, y + h - pad);
+      ctx.lineTo(x + pad, y + h - pad);
       ctx.closePath();
 
       const g = ctx.createLinearGradient(x, waterTop, x, y + h);
-      g.addColorStop(0, 'rgba(30,140,220,0.97)');
-      g.addColorStop(1, 'rgba(10,90,180,1.0)');
+      g.addColorStop(0, '#2196f3');
+      g.addColorStop(1, '#0d47a1');
       ctx.fillStyle = g;
       ctx.fill();
-      ctx.restore();
+
+      // 水面高光線
+      ctx.strokeStyle = 'rgba(150,210,255,0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + pad, waterTop);
+      for (let px = x + pad; px <= x + w - pad; px++) {
+        const wy = waterTop + Math.sin((px - x) * 0.1 + state.time * 3) * state.waveAmp;
+        ctx.lineTo(px, wy);
+      }
+      ctx.stroke();
     }
 
     function spawnParticles() {
