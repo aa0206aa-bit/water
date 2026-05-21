@@ -263,13 +263,13 @@
       ctx.closePath();
 
       const g = ctx.createLinearGradient(x, waterTop, x, y + h);
-      g.addColorStop(0, '#2196f3');
-      g.addColorStop(1, '#0d47a1');
+      g.addColorStop(0, '#ff9800');
+      g.addColorStop(1, '#e65100');
       ctx.fillStyle = g;
       ctx.fill();
 
       // 水面高光線
-      ctx.strokeStyle = 'rgba(150,210,255,0.8)';
+      ctx.strokeStyle = 'rgba(255,220,100,0.8)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(x + pad, waterTop);
