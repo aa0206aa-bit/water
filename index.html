@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>接水樂園</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f5f0eb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      touch-action: none;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const DPR = window.devicePixelRatio || 1;
+    const LW = 390;
+    const LH = 844;
+
+    function resize() {
+      const scale = Math.min(window.innerWidth / LW, window.innerHeight / LH);
+      canvas.style.width  = (LW * scale) + 'px';
+      canvas.style.height = (LH * scale) + 'px';
+      canvas.width  = LW * scale * DPR;
+      canvas.height = LH * scale * DPR;
+      ctx.setTransform(scale * DPR, 0, 0, scale * DPR, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function loop() {
+      ctx.clearRect(0, 0, LW, LH);
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+</body>
+</html>
