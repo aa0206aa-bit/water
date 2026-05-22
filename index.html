@@ -387,14 +387,17 @@
       cupPath(cup);
       ctx.clip();
 
+      const OVER = 70;
       ctx.beginPath();
-      ctx.moveTo(cx - halfW, waterTopY);
+      ctx.moveTo(cx - OVER, waterTopY);
+      ctx.lineTo(cx - halfW, waterTopY);
       for (let px = cx - halfW; px <= cx + halfW; px++) {
         const wy = waterTopY + Math.sin((px - cx) * 0.1 + state.time * 3) * state.waveAmp;
         ctx.lineTo(px, wy);
       }
-      ctx.lineTo(cx + halfW, y + h);
-      ctx.lineTo(cx - halfW, y + h);
+      ctx.lineTo(cx + OVER, waterTopY);
+      ctx.lineTo(cx + OVER, y + h + OVER);
+      ctx.lineTo(cx - OVER, y + h + OVER);
       ctx.closePath();
 
       const g = ctx.createLinearGradient(x, waterTopY, x, y + h);
