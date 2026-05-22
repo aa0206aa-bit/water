@@ -38,11 +38,24 @@
       text:       '#5a4a3a',
     };
 
+    // 杯型定義（widthAt(t)：t=0 底部, t=1 頂部，回傳寬度 px）
+    const CUPS = {
+      round:     { widthAt(t) { return 100; } },
+      straight:  { widthAt(t) { return 90; } },
+      wide:      { widthAt(t) { return 70 + 50 * t; } },
+      taper:     { widthAt(t) { return 120 - 50 * t; } },
+      hourglass: { widthAt(t) { return 60 + 55 * Math.pow(Math.abs(t - 0.5) * 2, 2); } },
+      irregular: { widthAt(t) { return 85 + 20 * Math.sin(t * Math.PI * 3); } },
+    };
+
     // 關卡設定
     const LEVELS = [
-      { target: 0.60, rate: 0.002, tolerance: 0.05 }, // Level 1：慢速、寬容
-      { target: 0.75, rate: 0.003, tolerance: 0.04 }, // Level 2：中速、中等精準
-      { target: 0.92, rate: 0.004, tolerance: 0.03 }, // Level 3：快速、嚴格精準
+      { target: 0.60, rate: 0.0020, tolerance: 0.050, cup: CUPS.round },
+      { target: 0.65, rate: 0.0025, tolerance: 0.045, cup: CUPS.straight },
+      { target: 0.70, rate: 0.0030, tolerance: 0.040, cup: CUPS.wide },
+      { target: 0.75, rate: 0.0035, tolerance: 0.035, cup: CUPS.taper },
+      { target: 0.80, rate: 0.0040, tolerance: 0.030, cup: CUPS.hourglass },
+      { target: 0.88, rate: 0.0050, tolerance: 0.020, cup: CUPS.irregular },
     ];
 
     // 遊戲狀態
