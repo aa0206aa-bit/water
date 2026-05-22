@@ -50,12 +50,12 @@
 
     // 關卡設定
     const LEVELS = [
-      { target: 0.40, rate: 0.0020, tolerance: 0.050, leak: 0.0030, cup: CUPS.round },
-      { target: 0.70, rate: 0.0025, tolerance: 0.045, leak: 0.0040, cup: CUPS.straight },
-      { target: 0.30, rate: 0.0030, tolerance: 0.040, leak: 0.0050, cup: CUPS.wide },
-      { target: 0.80, rate: 0.0035, tolerance: 0.035, leak: 0.0060, cup: CUPS.taper },
-      { target: 0.55, rate: 0.0040, tolerance: 0.030, leak: 0.0080, cup: CUPS.hourglass },
-      { target: 0.85, rate: 0.0050, tolerance: 0.020, leak: 0.0100, cup: CUPS.irregular },
+      { target: 0.40, rate: 0.0020, tolerance: 0.050, cup: CUPS.round },
+      { target: 0.70, rate: 0.0025, tolerance: 0.045, cup: CUPS.straight },
+      { target: 0.30, rate: 0.0030, tolerance: 0.040, cup: CUPS.wide },
+      { target: 0.80, rate: 0.0035, tolerance: 0.035, cup: CUPS.taper },
+      { target: 0.55, rate: 0.0040, tolerance: 0.030, cup: CUPS.hourglass },
+      { target: 0.85, rate: 0.0050, tolerance: 0.020, cup: CUPS.irregular },
     ];
 
     // 遊戲狀態
@@ -373,24 +373,6 @@
       } else {
         state.waveAmp = Math.max(0, state.waveAmp - 0.15);
       }
-
-      // 放開後：每幀持續偵測勝負；高於目標則依 leak 速率排水
-      if (!state.isPouring && state.gameState === 'PLAYING' && state.fillLevel > 0) {
-        if (Math.abs(state.fillLevel - lvl().target) <= lvl().tolerance) {
-          state.gameState = 'WIN';
-          if (state.currentLevel + 1 > state.maxUnlocked) {
-            state.maxUnlocked = state.currentLevel + 1;
-            saveProgress(state.maxUnlocked);
-          }
-        } else if (state.fillLevel < lvl().target - lvl().tolerance) {
-          state.gameState  = 'GAME_OVER';
-          state.loseReason = 'tooLittle';
-        } else {
-          // 高於目標區間，持續排水直到進入目標區間
-          state.fillLevel = Math.max(0, state.fillLevel - lvl().leak);
-        }
-      }
-
       if (state.gameState === 'WIN') state.winTime += 1 / 60;
     }
 
@@ -660,11 +642,25 @@
       if (state.gameState === 'PLAYING') state.isPouring = true;
     }
 
+    function checkWinLose() {
+      if (state.gameState !== 'PLAYING') return;
+      if (Math.abs(state.fillLevel - lvl().target) <= lvl().tolerance) {
+        state.gameState = 'WIN';
+        if (state.currentLevel + 1 > state.maxUnlocked) {
+          state.maxUnlocked = state.currentLevel + 1;
+          saveProgress(state.maxUnlocked);
+        }
+      } else {
+        state.gameState  = 'GAME_OVER';
+        state.loseReason = state.fillLevel < lvl().target ? 'tooLittle' : 'overflow';
+      }
+    }
+
     function onPointerUp(e) {
       e.preventDefault();
       if (!state.isPouring) return;
       state.isPouring = false;
-      // 勝負判斷移至 updateWater，每幀持續偵測
+      checkWinLose();
     }
 
     canvas.addEventListener('mousedown',   onPointerDown);
