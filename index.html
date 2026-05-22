@@ -238,22 +238,24 @@
       ctx.stroke();
     }
 
-    function drawTargetLine() {
+    function drawTargetLine(cup) {
       const { x, y, w, h } = CUP;
+      const cx = x + w / 2;
       const lineY = y + h * (1 - lvl().target);
+      const halfW = cup.widthAt(lvl().target) / 2;
       ctx.save();
       ctx.setLineDash([6, 4]);
       ctx.strokeStyle = C.targetLine;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x + 6, lineY);
-      ctx.lineTo(x + w - 6, lineY);
+      ctx.moveTo(cx - halfW + 6, lineY);
+      ctx.lineTo(cx + halfW - 6, lineY);
       ctx.stroke();
       ctx.restore();
       ctx.font = '10px sans-serif';
       ctx.fillStyle = C.targetLine;
       ctx.textAlign = 'right';
-      ctx.fillText('目標', x - 5, lineY + 4);
+      ctx.fillText('目標', cx - halfW - 5, lineY + 4);
     }
 
     function updateWater() {
@@ -271,39 +273,44 @@
       if (state.gameState === 'WIN') state.winTime += 1 / 60;
     }
 
-    function drawWater() {
+    function drawWater(cup) {
       if (state.fillLevel <= 0) return;
       const { x, y, w, h } = CUP;
-      const pad = 5;
-      const waterTop = y + h * (1 - state.fillLevel);
+      const cx = x + w / 2;
+      const waterTopY = y + h * (1 - state.fillLevel);
+      const halfW = cup.widthAt(state.fillLevel) / 2;
 
-      // 水面波浪 + 水體，直接填色不用 clip
+      ctx.save();
+      cupPath(cup);
+      ctx.clip();
+
       ctx.beginPath();
-      ctx.moveTo(x + pad, waterTop);
-      for (let px = x + pad; px <= x + w - pad; px++) {
-        const wy = waterTop + Math.sin((px - x) * 0.1 + state.time * 3) * state.waveAmp;
+      ctx.moveTo(cx - halfW, waterTopY);
+      for (let px = cx - halfW; px <= cx + halfW; px++) {
+        const wy = waterTopY + Math.sin((px - cx) * 0.1 + state.time * 3) * state.waveAmp;
         ctx.lineTo(px, wy);
       }
-      ctx.lineTo(x + w - pad, y + h - pad);
-      ctx.lineTo(x + pad, y + h - pad);
+      ctx.lineTo(cx + halfW, y + h);
+      ctx.lineTo(cx - halfW, y + h);
       ctx.closePath();
 
-      const g = ctx.createLinearGradient(x, waterTop, x, y + h);
+      const g = ctx.createLinearGradient(x, waterTopY, x, y + h);
       g.addColorStop(0, '#ff9800');
       g.addColorStop(1, '#e65100');
       ctx.fillStyle = g;
       ctx.fill();
 
-      // 水面高光線
       ctx.strokeStyle = 'rgba(255,220,100,0.8)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x + pad, waterTop);
-      for (let px = x + pad; px <= x + w - pad; px++) {
-        const wy = waterTop + Math.sin((px - x) * 0.1 + state.time * 3) * state.waveAmp;
+      ctx.moveTo(cx - halfW, waterTopY);
+      for (let px = cx - halfW; px <= cx + halfW; px++) {
+        const wy = waterTopY + Math.sin((px - cx) * 0.1 + state.time * 3) * state.waveAmp;
         ctx.lineTo(px, wy);
       }
       ctx.stroke();
+
+      ctx.restore();
     }
 
     function spawnParticles() {
@@ -601,10 +608,10 @@
       ctx.translate(0, bounceY);
       const cup = lvl().cup;
       drawCupFill(cup);
-      drawWater();
+      drawWater(cup);
       drawParticles();
       drawCupBorder(cup);
-      drawTargetLine();
+      drawTargetLine(cup);
       drawFace();
       ctx.restore();
 
