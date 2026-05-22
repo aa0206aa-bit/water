@@ -199,27 +199,40 @@
       ctx.stroke();
     }
 
-    function cupPath() {
+    function cupPath(cup) {
       const { x, y, w, h } = CUP;
-      const r = 12;
+      const cx = x + w / 2;
+      const r = 8;
+      const N = 32;
       ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x, y + h - r);
-      ctx.quadraticCurveTo(x, y + h, x + r, y + h);
-      ctx.lineTo(x + w - r, y + h);
-      ctx.quadraticCurveTo(x + w, y + h, x + w, y + h - r);
-      ctx.lineTo(x + w, y);
+      for (let i = 0; i <= N; i++) {
+        const t = 1 - i / N;
+        const halfW = cup.widthAt(t) / 2;
+        const py = y + (i / N) * (h - r);
+        if (i === 0) ctx.moveTo(cx - halfW, py);
+        else ctx.lineTo(cx - halfW, py);
+      }
+      const bHW = cup.widthAt(0) / 2;
+      ctx.quadraticCurveTo(cx - bHW, y + h, cx - bHW + r, y + h);
+      ctx.lineTo(cx + bHW - r, y + h);
+      ctx.quadraticCurveTo(cx + bHW, y + h, cx + bHW, y + h - r);
+      for (let i = N; i >= 0; i--) {
+        const t = 1 - i / N;
+        const halfW = cup.widthAt(t) / 2;
+        const py = y + (i / N) * (h - r);
+        ctx.lineTo(cx + halfW, py);
+      }
       ctx.closePath();
     }
 
-    function drawCupFill() {
-      cupPath();
+    function drawCupFill(cup) {
+      cupPath(cup);
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       ctx.fill();
     }
 
-    function drawCupBorder() {
-      cupPath();
+    function drawCupBorder(cup) {
+      cupPath(cup);
       ctx.strokeStyle = 'rgba(140,200,240,1.0)';
       ctx.lineWidth = 3;
       ctx.stroke();
@@ -586,10 +599,11 @@
 
       ctx.save();
       ctx.translate(0, bounceY);
-      drawCupFill();       // 杯底填色先畫（水的底層）
-      drawWater();         // 水在填色之上
+      const cup = lvl().cup;
+      drawCupFill(cup);
+      drawWater();
       drawParticles();
-      drawCupBorder();     // 杯子邊框壓在最上層
+      drawCupBorder(cup);
       drawTargetLine();
       drawFace();
       ctx.restore();
