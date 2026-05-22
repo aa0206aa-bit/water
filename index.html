@@ -610,24 +610,45 @@
       };
     }
 
-    function isInButton(lx, ly) {
-      const bx = LW / 2 - 80, by = LH / 2 + 50;
-      return lx >= bx && lx <= bx + 160 && ly >= by && ly <= by + 48;
+    const BTN_L = { x: LW/2 - 162, y: LH/2 + 50, w: 148, h: 48 };
+    const BTN_R = { x: LW/2 + 14,  y: LH/2 + 50, w: 148, h: 48 };
+
+    function isInRect(lx, ly, r) {
+      return lx >= r.x && lx <= r.x + r.w && ly >= r.y && ly <= r.y + r.h;
     }
 
     function onPointerDown(e) {
       e.preventDefault();
       const { x: lx, y: ly } = getLogicalCoords(e);
-      if (state.gameState === 'WIN') {
-        if (isInButton(lx, ly)) {
-          state.currentLevel < LEVELS.length - 1 ? nextLevel() : resetGame();
+
+      if (state.gameState === 'SELECT') {
+        for (let i = 0; i < LEVELS.length; i++) {
+          if (i <= state.maxUnlocked) {
+            const { x, y, w, h } = tileRect(i);
+            if (lx >= x && lx <= x + w && ly >= y && ly <= y + h) {
+              state.currentLevel = i;
+              resetLevel();
+            }
+          }
         }
         return;
       }
-      if (state.gameState === 'GAME_OVER') {
-        if (isInButton(lx, ly)) resetLevel();
+
+      if (state.gameState === 'WIN') {
+        if (isInRect(lx, ly, BTN_L)) {
+          state.currentLevel < LEVELS.length - 1 ? nextLevel() : resetGame();
+        } else if (isInRect(lx, ly, BTN_R)) {
+          state.gameState = 'SELECT';
+        }
         return;
       }
+
+      if (state.gameState === 'GAME_OVER') {
+        if (isInRect(lx, ly, BTN_L)) resetLevel();
+        else if (isInRect(lx, ly, BTN_R)) state.gameState = 'SELECT';
+        return;
+      }
+
       if (state.gameState === 'READY')   state.gameState = 'PLAYING';
       if (state.gameState === 'PLAYING') state.isPouring = true;
     }
@@ -688,7 +709,8 @@
         ctx.fillStyle = '#8a7a6a';
         ctx.fillText(isLastLevel ? '你是接水大師 🏆' : '精準到位 🎉', LW / 2, LH / 2 + 20);
         const btnLabel = isLastLevel ? '再玩一次' : '下一關 →';
-        drawButton(LW / 2 - 80, LH / 2 + 50, 160, 48, btnLabel, '#7ec8e3');
+        drawButton(BTN_L.x, BTN_L.y, BTN_L.w, BTN_L.h, btnLabel, '#7ec8e3');
+        drawButton(BTN_R.x, BTN_R.y, BTN_R.w, BTN_R.h, '選關', '#a0c0d8');
       }
 
       if (state.gameState === 'GAME_OVER') {
@@ -703,7 +725,8 @@
         ctx.font = '22px sans-serif';
         ctx.fillStyle = '#8a7a6a';
         ctx.fillText(hint, LW / 2, LH / 2 + 20);
-        drawButton(LW / 2 - 80, LH / 2 + 50, 160, 48, '再試一次', '#e07070');
+        drawButton(BTN_L.x, BTN_L.y, BTN_L.w, BTN_L.h, '再試一次', '#e07070');
+        drawButton(BTN_R.x, BTN_R.y, BTN_R.w, BTN_R.h, '選關', '#c08080');
       }
     }
 
