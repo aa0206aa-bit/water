@@ -248,6 +248,99 @@
       ctx.stroke();
     }
 
+    function drawCupMini(cup, cx, topY, h, scale) {
+      const r = 5;
+      const N = 24;
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const t = 1 - i / N;
+        const halfW = (cup.widthAt(t) / 2) * scale;
+        const py = topY + (i / N) * (h - r);
+        if (i === 0) ctx.moveTo(cx - halfW, py);
+        else ctx.lineTo(cx - halfW, py);
+      }
+      const bHW = (cup.widthAt(0) / 2) * scale;
+      ctx.quadraticCurveTo(cx - bHW, topY + h, cx - bHW + r, topY + h);
+      ctx.lineTo(cx + bHW - r, topY + h);
+      ctx.quadraticCurveTo(cx + bHW, topY + h, cx + bHW, topY + h - r);
+      for (let i = N; i >= 0; i--) {
+        const t = 1 - i / N;
+        const halfW = (cup.widthAt(t) / 2) * scale;
+        const py = topY + (i / N) * (h - r);
+        ctx.lineTo(cx + halfW, py);
+      }
+      ctx.closePath();
+    }
+
+    const MINI_SCALE = 70 / 120;
+    const MINI_CUP_H = 62;
+
+    const SEL = {
+      tW: 140, tH: 160, gap: 20,
+      get startX() { return (LW - (2 * this.tW + this.gap)) / 2; },
+      get startY() { return (LH - (3 * this.tH + 2 * this.gap)) / 2; },
+    };
+
+    function tileRect(i) {
+      const col = i % 2, row = Math.floor(i / 2);
+      return {
+        x: SEL.startX + col * (SEL.tW + SEL.gap),
+        y: SEL.startY + row * (SEL.tH + SEL.gap),
+        w: SEL.tW, h: SEL.tH,
+      };
+    }
+
+    function drawLevelSelect() {
+      ctx.fillStyle = 'rgba(245,240,235,0.93)';
+      ctx.fillRect(0, 0, LW, LH);
+
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillStyle = C.text;
+      ctx.textAlign = 'center';
+      ctx.fillText('選擇關卡', LW / 2, SEL.startY - 28);
+
+      for (let i = 0; i < LEVELS.length; i++) {
+        const { x, y, w, h } = tileRect(i);
+        const unlocked = i <= state.maxUnlocked;
+        const cleared  = i < state.maxUnlocked;
+
+        roundRect(x, y, w, h, 14);
+        ctx.fillStyle = unlocked ? 'rgba(255,255,255,0.92)' : 'rgba(180,180,180,0.35)';
+        ctx.fill();
+        ctx.strokeStyle = cleared ? C.gold : (unlocked ? 'rgba(126,200,227,0.9)' : 'rgba(160,160,160,0.4)');
+        ctx.lineWidth = cleared ? 2.5 : 1.5;
+        ctx.stroke();
+
+        ctx.save();
+        if (!unlocked) ctx.globalAlpha = 0.25;
+        drawCupMini(LEVELS[i].cup, x + w / 2, y + 18, MINI_CUP_H, MINI_SCALE);
+        ctx.fillStyle = 'rgba(230,245,255,0.85)';
+        ctx.fill();
+        ctx.strokeStyle = cleared ? C.gold : 'rgba(120,180,220,0.8)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillStyle = unlocked ? C.text : '#aaa';
+        ctx.textAlign = 'center';
+        ctx.fillText('Level ' + (i + 1), x + w / 2, y + h - 30);
+
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        if (cleared) {
+          ctx.fillStyle = C.gold;
+          ctx.fillText('★', x + w / 2, y + h - 10);
+        } else if (unlocked) {
+          ctx.font = '11px sans-serif';
+          ctx.fillStyle = '#8a7a6a';
+          ctx.fillText('點擊開始', x + w / 2, y + h - 10);
+        } else {
+          ctx.fillText('🔒', x + w / 2, y + h - 10);
+        }
+      }
+    }
+
     function drawTargetLine(cup) {
       const { x, y, w, h } = CUP;
       const cx = x + w / 2;
@@ -567,6 +660,7 @@
     }
 
     function drawUI() {
+      if (state.gameState === 'SELECT') { drawLevelSelect(); return; }
       ctx.font = 'bold 20px sans-serif';
       ctx.fillStyle = C.text;
       ctx.textAlign = 'center';
@@ -615,27 +709,32 @@
 
     function loop() {
       state.time += 1 / 60;
-      updateWater();
-      updateParticles();
+      if (state.gameState !== 'SELECT') {
+        updateWater();
+        updateParticles();
+      }
       ctx.clearRect(0, 0, LW, LH);
       drawBackground();
-      drawMachine();
-      drawSlide();
 
-      const bounceY = state.gameState === 'WIN'
-        ? -Math.abs(Math.sin(state.winTime * 8)) * 10
-        : 0;
+      if (state.gameState !== 'SELECT') {
+        drawMachine();
+        drawSlide();
 
-      ctx.save();
-      ctx.translate(0, bounceY);
-      const cup = lvl().cup;
-      drawCupFill(cup);
-      drawWater(cup);
-      drawParticles();
-      drawCupBorder(cup);
-      drawTargetLine(cup);
-      drawFace();
-      ctx.restore();
+        const bounceY = state.gameState === 'WIN'
+          ? -Math.abs(Math.sin(state.winTime * 8)) * 10
+          : 0;
+
+        ctx.save();
+        ctx.translate(0, bounceY);
+        const cup = lvl().cup;
+        drawCupFill(cup);
+        drawWater(cup);
+        drawParticles();
+        drawCupBorder(cup);
+        drawTargetLine(cup);
+        drawFace();
+        ctx.restore();
+      }
 
       drawUI();
       requestAnimationFrame(loop);
