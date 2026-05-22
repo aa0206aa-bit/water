@@ -27,6 +27,8 @@
     const SLIDE_END   = { x: 200, y: 435 };
     const CUP         = { x: 145, y: 445, w: 100, h: 120 };
     const BLOCKER     = { w: 48, h: 8, y: 440, minCX: 115, maxCX: 285 };
+    const SPIN_CX     = CUP.x + CUP.w / 2;  // 旋轉中心 x = 195
+    const SPIN_ARM    = 55;                   // 旋轉臂長（半徑）
 
     // 顏色
     const C = {
@@ -55,8 +57,8 @@
       { target: 0.70, rate: 0.0025, tolerance: 0.045, blockerSpeed: 0.5, cup: CUPS.straight },
       { target: 0.30, rate: 0.0030, tolerance: 0.040, blockerSpeed: 0.9, cup: CUPS.wide },
       { target: 0.80, rate: 0.0035, tolerance: 0.035, blockerSpeed: 1.4, cup: CUPS.taper },
-      { target: 0.55, rate: 0.0040, tolerance: 0.030, blockerSpeed: 1.8, cup: CUPS.hourglass },
-      { target: 0.85, rate: 0.0050, tolerance: 0.020, blockerSpeed: 2.5, cup: CUPS.irregular },
+      { target: 0.55, rate: 0.0040, tolerance: 0.030, blockerSpeed: 0.04, blockerMode: 'spin', cup: CUPS.hourglass },
+      { target: 0.85, rate: 0.0050, tolerance: 0.020, blockerSpeed: 0.06, blockerMode: 'spin', cup: CUPS.irregular },
     ];
 
     // 遊戲狀態
@@ -74,6 +76,7 @@
       winTime:      0,
       blockerX:     195,
       blockerDir:   1,
+      blockerAngle: 0,
     };
 
     const lvl = () => LEVELS[state.currentLevel];
@@ -455,21 +458,39 @@
       if (state.gameState !== 'PLAYING' && state.gameState !== 'READY') return;
       const speed = lvl().blockerSpeed;
       if (!speed) return;
-      state.blockerX += speed * state.blockerDir;
-      if (state.blockerX >= BLOCKER.maxCX || state.blockerX <= BLOCKER.minCX) {
-        state.blockerDir *= -1;
+      if (lvl().blockerMode === 'spin') {
+        state.blockerAngle = (state.blockerAngle + speed) % (Math.PI * 2);
+      } else {
+        state.blockerX += speed * state.blockerDir;
+        if (state.blockerX >= BLOCKER.maxCX || state.blockerX <= BLOCKER.minCX) {
+          state.blockerDir *= -1;
+        }
       }
     }
 
     function drawBlocker() {
       if (!lvl().blockerSpeed) return;
-      const { w, h, y } = BLOCKER;
-      roundRect(state.blockerX - w / 2, y - h / 2, w, h, 3);
-      ctx.fillStyle = '#8a7a6a';
-      ctx.fill();
-      ctx.strokeStyle = C.gold;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      const { h, y } = BLOCKER;
+      if (lvl().blockerMode === 'spin') {
+        ctx.save();
+        ctx.translate(SPIN_CX, y);
+        ctx.rotate(state.blockerAngle);
+        roundRect(-SPIN_ARM, -h / 2, SPIN_ARM * 2, h, 3);
+        ctx.fillStyle = '#8a7a6a';
+        ctx.fill();
+        ctx.strokeStyle = C.gold;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        const { w } = BLOCKER;
+        roundRect(state.blockerX - w / 2, y - h / 2, w, h, 3);
+        ctx.fillStyle = '#8a7a6a';
+        ctx.fill();
+        ctx.strokeStyle = C.gold;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
     }
 
     function updateParticles() {
@@ -479,11 +500,24 @@
       state.particles = state.particles.filter(p => {
         p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life++;
         if (lvl().blockerSpeed) {
-          const bl = state.blockerX - BLOCKER.w / 2;
-          const br = state.blockerX + BLOCKER.w / 2;
-          if (p.y >= BLOCKER.y - 6 && p.y <= BLOCKER.y + 4 && p.x >= bl && p.x <= br) {
-            spawnSplash(p.x, BLOCKER.y);
-            return false;
+          if (lvl().blockerMode === 'spin') {
+            const dx = p.x - SPIN_CX;
+            const dy = p.y - BLOCKER.y;
+            const cos = Math.cos(-state.blockerAngle);
+            const sin = Math.sin(-state.blockerAngle);
+            const lx = dx * cos - dy * sin;
+            const ly = dx * sin + dy * cos;
+            if (Math.abs(lx) <= SPIN_ARM && Math.abs(ly) <= BLOCKER.h / 2 + 4) {
+              spawnSplash(p.x, p.y);
+              return false;
+            }
+          } else {
+            const bl = state.blockerX - BLOCKER.w / 2;
+            const br = state.blockerX + BLOCKER.w / 2;
+            if (p.y >= BLOCKER.y - 6 && p.y <= BLOCKER.y + 4 && p.x >= bl && p.x <= br) {
+              spawnSplash(p.x, BLOCKER.y);
+              return false;
+            }
           }
         }
         if (p.y >= waterTop && p.x > cx && p.x < cx + cw) {
@@ -602,8 +636,9 @@
       state.splashes   = [];
       state.waveAmp    = 0;
       state.winTime    = 0;
-      state.blockerX   = BLOCKER.minCX;
-      state.blockerDir = 1;
+      state.blockerX    = BLOCKER.minCX;
+      state.blockerDir  = 1;
+      state.blockerAngle = 0;
     }
 
     function resetGame() {
