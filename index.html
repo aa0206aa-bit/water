@@ -26,6 +26,7 @@
     const SLIDE_START = { x: 75,  y: 185 };
     const SLIDE_END   = { x: 200, y: 435 };
     const CUP         = { x: 145, y: 445, w: 100, h: 120 };
+    const BLOCKER     = { w: 48, h: 8, y: 440, minCX: 115, maxCX: 285 };
 
     // 顏色
     const C = {
@@ -50,12 +51,12 @@
 
     // 關卡設定
     const LEVELS = [
-      { target: 0.40, rate: 0.0020, tolerance: 0.050, cup: CUPS.round },
-      { target: 0.70, rate: 0.0025, tolerance: 0.045, cup: CUPS.straight },
-      { target: 0.30, rate: 0.0030, tolerance: 0.040, cup: CUPS.wide },
-      { target: 0.80, rate: 0.0035, tolerance: 0.035, cup: CUPS.taper },
-      { target: 0.55, rate: 0.0040, tolerance: 0.030, cup: CUPS.hourglass },
-      { target: 0.85, rate: 0.0050, tolerance: 0.020, cup: CUPS.irregular },
+      { target: 0.40, rate: 0.0020, tolerance: 0.050, blockerSpeed: 0.0, cup: CUPS.round },
+      { target: 0.70, rate: 0.0025, tolerance: 0.045, blockerSpeed: 0.5, cup: CUPS.straight },
+      { target: 0.30, rate: 0.0030, tolerance: 0.040, blockerSpeed: 0.9, cup: CUPS.wide },
+      { target: 0.80, rate: 0.0035, tolerance: 0.035, blockerSpeed: 1.4, cup: CUPS.taper },
+      { target: 0.55, rate: 0.0040, tolerance: 0.030, blockerSpeed: 1.8, cup: CUPS.hourglass },
+      { target: 0.85, rate: 0.0050, tolerance: 0.020, blockerSpeed: 2.5, cup: CUPS.irregular },
     ];
 
     // 遊戲狀態
@@ -71,6 +72,8 @@
       time:         0,
       waveAmp:      0,
       winTime:      0,
+      blockerX:     195,
+      blockerDir:   1,
     };
 
     const lvl = () => LEVELS[state.currentLevel];
@@ -448,12 +451,41 @@
       }
     }
 
+    function updateBlocker() {
+      if (state.gameState !== 'PLAYING' && state.gameState !== 'READY') return;
+      const speed = lvl().blockerSpeed;
+      if (!speed) return;
+      state.blockerX += speed * state.blockerDir;
+      if (state.blockerX >= BLOCKER.maxCX || state.blockerX <= BLOCKER.minCX) {
+        state.blockerDir *= -1;
+      }
+    }
+
+    function drawBlocker() {
+      if (!lvl().blockerSpeed) return;
+      const { w, h, y } = BLOCKER;
+      roundRect(state.blockerX - w / 2, y - h / 2, w, h, 3);
+      ctx.fillStyle = '#8a7a6a';
+      ctx.fill();
+      ctx.strokeStyle = C.gold;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
     function updateParticles() {
       if (state.isPouring && state.gameState === 'PLAYING') spawnParticles();
       const { x: cx, y: cy, w: cw, h: ch } = CUP;
       const waterTop = cy + ch * (1 - state.fillLevel);
       state.particles = state.particles.filter(p => {
         p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life++;
+        if (lvl().blockerSpeed) {
+          const bl = state.blockerX - BLOCKER.w / 2;
+          const br = state.blockerX + BLOCKER.w / 2;
+          if (p.y >= BLOCKER.y - 6 && p.y <= BLOCKER.y + 4 && p.x >= bl && p.x <= br) {
+            spawnSplash(p.x, BLOCKER.y);
+            return false;
+          }
+        }
         if (p.y >= waterTop && p.x > cx && p.x < cx + cw) {
           spawnSplash(p.x, waterTop);
           return false;
@@ -570,6 +602,8 @@
       state.splashes   = [];
       state.waveAmp    = 0;
       state.winTime    = 0;
+      state.blockerX   = BLOCKER.minCX;
+      state.blockerDir = 1;
     }
 
     function resetGame() {
@@ -737,6 +771,7 @@
       state.time += 1 / 60;
       if (state.gameState !== 'SELECT') {
         updateWater();
+        updateBlocker();
         updateParticles();
       }
       ctx.clearRect(0, 0, LW, LH);
@@ -755,6 +790,7 @@
         const cup = lvl().cup;
         drawCupFill(cup);
         drawWater(cup);
+        drawBlocker();
         drawParticles();
         drawCupBorder(cup);
         drawTargetLine(cup);
