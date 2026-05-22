@@ -61,10 +61,11 @@
     // 遊戲狀態
     const state = {
       fillLevel:    0,
-      gameState:    'READY',
+      gameState:    'SELECT',
       isPouring:    false,
-      loseReason:   '',   // 'overflow' | 'tooLittle'
+      loseReason:   '',
       currentLevel: 0,
+      maxUnlocked:  0,
       particles:    [],
       splashes:     [],
       time:         0,
@@ -73,6 +74,15 @@
     };
 
     const lvl = () => LEVELS[state.currentLevel];
+
+    function readProgress() {
+      try { return parseInt(localStorage.getItem('waterGame_maxUnlocked') || '0', 10); }
+      catch (e) { return 0; }
+    }
+    function saveProgress(v) {
+      try { localStorage.setItem('waterGame_maxUnlocked', String(v)); } catch (e) {}
+    }
+    state.maxUnlocked = readProgress();
 
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -467,8 +477,16 @@
     }
 
     function resetGame() {
+      state.maxUnlocked = readProgress();
       state.currentLevel = 0;
-      resetLevel();
+      state.fillLevel = 0;
+      state.isPouring = false;
+      state.loseReason = '';
+      state.particles = [];
+      state.splashes = [];
+      state.waveAmp = 0;
+      state.winTime = 0;
+      state.gameState = 'SELECT';
     }
 
     function nextLevel() {
@@ -480,6 +498,10 @@
       if (state.gameState !== 'PLAYING') return;
       if (Math.abs(state.fillLevel - lvl().target) <= lvl().tolerance) {
         state.gameState = 'WIN';
+        if (state.currentLevel + 1 > state.maxUnlocked) {
+          state.maxUnlocked = state.currentLevel + 1;
+          saveProgress(state.maxUnlocked);
+        }
       } else {
         state.gameState  = 'GAME_OVER';
         state.loseReason = state.fillLevel < lvl().target ? 'tooLittle' : 'overflow';
