@@ -371,7 +371,19 @@
     }
 
     function updateWater() {
-      if (state.isPouring && state.gameState === 'PLAYING') {
+      if (state.gameState === 'POURING') {
+        const transfer = Math.min(POUR_RATE, state.collectedLevel);
+        state.collectedLevel = Math.max(0, state.collectedLevel - transfer);
+        state.fillLevel      = Math.min(1, state.fillLevel + transfer);
+        state.waveAmp = Math.min(6, state.waveAmp + 0.3);
+        if (state.fillLevel >= 1) {
+          state.collectedLevel = 0;
+          state.gameState  = 'GAME_OVER';
+          state.loseReason = 'overflow';
+        } else if (state.collectedLevel <= 0) {
+          checkWinLose();
+        }
+      } else if (state.isPouring && state.gameState === 'PLAYING') {
         state.waveAmp = Math.min(6, state.waveAmp + 0.5);
       } else {
         state.waveAmp = Math.max(0, state.waveAmp - 0.15);
@@ -718,7 +730,7 @@
     }
 
     function checkWinLose() {
-      if (state.gameState !== 'PLAYING') return;
+      if (state.gameState !== 'POURING') return;
       if (Math.abs(state.fillLevel - lvl().target) <= lvl().tolerance) {
         state.gameState = 'WIN';
         if (state.currentLevel + 1 > state.maxUnlocked) {
@@ -733,9 +745,9 @@
 
     function onPointerUp(e) {
       e.preventDefault();
-      if (!state.isPouring) return;
+      if (state.gameState !== 'PLAYING' || !state.isPouring) return;
       state.isPouring = false;
-      checkWinLose();
+      state.gameState = 'POURING';
     }
 
     canvas.addEventListener('mousedown',   onPointerDown);
