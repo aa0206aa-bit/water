@@ -77,6 +77,7 @@
       time:            0,
       waveAmp:         0,
       winTime:         0,
+      resultDelay:     0,
       blockerX:        195,
       blockerDir:      1,
       blockerAngle:    0,
@@ -435,6 +436,7 @@
           state.collectedLevel = 0;
           state.gameState  = 'GAME_OVER';
           state.loseReason = 'overflow';
+          state.resultDelay = 72;
         } else if (state.collectedLevel <= 0) {
           checkWinLose();
         }
@@ -443,6 +445,7 @@
       } else {
         state.waveAmp = Math.max(0, state.waveAmp - 0.15);
       }
+      if (state.resultDelay > 0) state.resultDelay--;
       if (state.gameState === 'WIN') state.winTime += 1 / 60;
     }
 
@@ -708,6 +711,7 @@
       state.splashes        = [];
       state.waveAmp         = 0;
       state.winTime         = 0;
+      state.resultDelay     = 0;
       state.blockerX        = BLOCKER.minCX;
       state.blockerDir      = 1;
       state.blockerAngle    = 0;
@@ -724,6 +728,7 @@
       state.splashes       = [];
       state.waveAmp        = 0;
       state.winTime        = 0;
+      state.resultDelay    = 0;
       state.gameState      = 'SELECT';
     }
 
@@ -787,14 +792,16 @@
     function checkWinLose() {
       if (state.gameState !== 'POURING') return;
       if (Math.abs(state.fillLevel - lvl().target) <= lvl().tolerance) {
-        state.gameState = 'WIN';
+        state.gameState   = 'WIN';
+        state.resultDelay = 72;
         if (state.currentLevel + 1 > state.maxUnlocked) {
           state.maxUnlocked = state.currentLevel + 1;
           saveProgress(state.maxUnlocked);
         }
       } else {
-        state.gameState  = 'GAME_OVER';
-        state.loseReason = state.fillLevel < lvl().target ? 'tooLittle' : 'overflow';
+        state.gameState   = 'GAME_OVER';
+        state.loseReason  = state.fillLevel < lvl().target ? 'tooLittle' : 'overflow';
+        state.resultDelay = 72;
       }
     }
 
@@ -842,7 +849,7 @@
         ctx.globalAlpha = 1;
       }
 
-      if (state.gameState === 'WIN') {
+      if (state.gameState === 'WIN' && state.resultDelay <= 0) {
         ctx.fillStyle = 'rgba(245,240,235,0.88)';
         ctx.fillRect(0, 0, LW, LH);
         ctx.font = 'bold 52px sans-serif';
@@ -858,7 +865,7 @@
         drawButton(BTN_R.x, BTN_R.y, BTN_R.w, BTN_R.h, '選關', '#a0c0d8');
       }
 
-      if (state.gameState === 'GAME_OVER') {
+      if (state.gameState === 'GAME_OVER' && state.resultDelay <= 0) {
         ctx.fillStyle = 'rgba(245,240,235,0.88)';
         ctx.fillRect(0, 0, LW, LH);
         ctx.font = 'bold 52px sans-serif';
