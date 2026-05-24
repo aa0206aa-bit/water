@@ -257,6 +257,61 @@
       ctx.stroke();
     }
 
+    function drawCollector() {
+      const { x, y, w, h } = COLLECTOR;
+      const cx = x + w / 2;
+      roundRect(x, y, w, h, 6);
+      ctx.fillStyle = 'rgba(230,222,210,0.9)';
+      ctx.fill();
+      ctx.strokeStyle = C.gold;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - 7, y + h);
+      ctx.lineTo(cx + 7, y + h);
+      ctx.lineTo(cx + 4, y + h + 10);
+      ctx.lineTo(cx - 4, y + h + 10);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(210,200,185,0.9)';
+      ctx.fill();
+      ctx.strokeStyle = C.gold;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.font = '9px sans-serif';
+      ctx.fillStyle = C.text;
+      ctx.textAlign = 'center';
+      ctx.fillText('集水站', cx, y - 4);
+    }
+
+    function drawCollectorWater() {
+      if (state.collectedLevel <= 0) return;
+      const { x, y, w, h } = COLLECTOR;
+      const waterTopY = y + h * (1 - state.collectedLevel);
+      ctx.save();
+      roundRect(x + 2, y + 2, w - 4, h - 4, 5);
+      ctx.clip();
+      const g = ctx.createLinearGradient(0, waterTopY, 0, y + h);
+      g.addColorStop(0, '#7ec8e3');
+      g.addColorStop(1, '#5ab0d0');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, waterTopY, w, h);
+      ctx.restore();
+    }
+
+    function drawPourStream() {
+      if (state.gameState !== 'POURING' || state.collectedLevel <= 0) return;
+      const cx = COLLECTOR.x + COLLECTOR.w / 2;
+      const fromY = COLLECTOR.y + COLLECTOR.h + 10;
+      const toY = CUP.y + CUP.h * (1 - state.fillLevel);
+      if (toY <= fromY) return;
+      const streamW = Math.max(2, 6 * state.collectedLevel);
+      const g = ctx.createLinearGradient(0, fromY, 0, toY);
+      g.addColorStop(0, 'rgba(126,200,227,0.9)');
+      g.addColorStop(1, 'rgba(90,176,208,0.4)');
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - streamW / 2, fromY, streamW, toY - fromY);
+    }
+
     function drawCupMini(cup, cx, topY, h, scale) {
       const r = 5;
       const N = 24;
