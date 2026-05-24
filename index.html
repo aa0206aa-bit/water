@@ -65,20 +65,21 @@
 
     // 遊戲狀態
     const state = {
-      fillLevel:    0,
-      gameState:    'SELECT',
-      isPouring:    false,
-      loseReason:   '',
-      currentLevel: 0,
-      maxUnlocked:  0,
-      particles:    [],
-      splashes:     [],
-      time:         0,
-      waveAmp:      0,
-      winTime:      0,
-      blockerX:     195,
-      blockerDir:   1,
-      blockerAngle: 0,
+      fillLevel:       0,
+      collectedLevel:  0,
+      gameState:       'SELECT',
+      isPouring:       false,
+      loseReason:      '',
+      currentLevel:    0,
+      maxUnlocked:     0,
+      particles:       [],
+      splashes:        [],
+      time:            0,
+      waveAmp:         0,
+      winTime:         0,
+      blockerX:        195,
+      blockerDir:      1,
+      blockerAngle:    0,
     };
 
     const lvl = () => LEVELS[state.currentLevel];
@@ -632,30 +633,32 @@
     }
 
     function resetLevel() {
-      state.fillLevel  = 0;
-      state.gameState  = 'READY';
-      state.isPouring  = false;
-      state.loseReason = '';
-      state.particles  = [];
-      state.splashes   = [];
-      state.waveAmp    = 0;
-      state.winTime    = 0;
-      state.blockerX    = BLOCKER.minCX;
-      state.blockerDir  = 1;
-      state.blockerAngle = 0;
+      state.fillLevel       = 0;
+      state.collectedLevel  = 0;
+      state.gameState       = 'READY';
+      state.isPouring       = false;
+      state.loseReason      = '';
+      state.particles       = [];
+      state.splashes        = [];
+      state.waveAmp         = 0;
+      state.winTime         = 0;
+      state.blockerX        = BLOCKER.minCX;
+      state.blockerDir      = 1;
+      state.blockerAngle    = 0;
     }
 
     function resetGame() {
-      state.maxUnlocked = readProgress();
-      state.currentLevel = 0;
-      state.fillLevel = 0;
-      state.isPouring = false;
-      state.loseReason = '';
-      state.particles = [];
-      state.splashes = [];
-      state.waveAmp = 0;
-      state.winTime = 0;
-      state.gameState = 'SELECT';
+      state.maxUnlocked    = readProgress();
+      state.currentLevel   = 0;
+      state.fillLevel      = 0;
+      state.collectedLevel = 0;
+      state.isPouring      = false;
+      state.loseReason     = '';
+      state.particles      = [];
+      state.splashes       = [];
+      state.waveAmp        = 0;
+      state.winTime        = 0;
+      state.gameState      = 'SELECT';
     }
 
     function nextLevel() {
