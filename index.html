@@ -492,8 +492,6 @@
 
     function updateParticles() {
       if (state.isPouring && state.gameState === 'PLAYING') spawnParticles();
-      const { x: cx, y: cy, w: cw, h: ch } = CUP;
-      const waterTop = cy + ch * (1 - state.fillLevel);
       state.particles = state.particles.filter(p => {
         p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life++;
         if (lvl().blockerSpeed) {
@@ -519,12 +517,13 @@
             }
           }
         }
-        if (p.y >= waterTop && p.x > cx && p.x < cx + cw) {
-          spawnSplash(p.x, waterTop);
-          state.fillLevel = Math.min(1, state.fillLevel + lvl().rate / 2);
-          if (state.fillLevel >= 1 && state.gameState === 'PLAYING') {
+        if (state.gameState === 'PLAYING' &&
+            p.y >= COLLECTOR.y && p.x >= COLLECTOR.x && p.x <= COLLECTOR.x + COLLECTOR.w) {
+          spawnSplash(p.x, COLLECTOR.y);
+          state.collectedLevel = Math.min(1, state.collectedLevel + lvl().rate / 2);
+          if (state.collectedLevel >= 1) {
             state.gameState  = 'GAME_OVER';
-            state.loseReason = 'overflow';
+            state.loseReason = 'tooMuch';
             state.isPouring  = false;
           }
           return false;
