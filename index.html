@@ -838,7 +838,7 @@
         ctx.font = '16px sans-serif';
         ctx.fillStyle = C.text;
         ctx.textAlign = 'center';
-        ctx.fillText('按住螢幕開始注水', LW / 2, LH - 70);
+        ctx.fillText('按住螢幕開始集水', LW / 2, LH - 70);
         ctx.globalAlpha = 1;
       }
 
@@ -864,8 +864,10 @@
         ctx.font = 'bold 52px sans-serif';
         ctx.fillStyle = '#c05050';
         ctx.textAlign = 'center';
-        const title = state.loseReason === 'tooLittle' ? '水太少了！' : '水滿了！';
-        const hint  = state.loseReason === 'tooLittle' ? '多撐一會兒' : '放手快一點';
+        const title = state.loseReason === 'tooLittle' ? '水太少了！'
+                    : state.loseReason === 'tooMuch'    ? '集太多了！' : '水滿了！';
+        const hint  = state.loseReason === 'tooLittle' ? '多撐一會兒'
+                    : state.loseReason === 'tooMuch'    ? '少集一點' : '放手快一點';
         ctx.fillText(title, LW / 2, LH / 2 - 30);
         ctx.font = '22px sans-serif';
         ctx.fillStyle = '#8a7a6a';
