@@ -26,12 +26,8 @@
     const SLIDE_START = { x: 75,  y: 185 };
     const SLIDE_END   = { x: 200, y: 435 };
     const CUP         = { x: 145, y: 615, w: 100, h: 120 };
-    const BLOCKER     = { w: 48, h: 8, y: 475, minCX: 115, maxCX: 285 };
-    const SPIN_CX     = CUP.x + CUP.w / 2;  // 旋轉中心 x = 195
-    const SPIN_ARM    = 35;
     const COLLECTOR   = { x: 155, y: 515, w: 80, h: 45 };
     const POUR_RATE   = 1 / 90;
-    const POUR_RATIO  = 1;    // 集水站 1:1 對應水杯：集水站 40% → 水杯 40%
 
     // 顏色
     const C = {
@@ -54,14 +50,14 @@
       irregular: { widthAt(t) { return 85 + 20 * Math.sin(t * Math.PI * 3); } },
     };
 
-    // 關卡設定
+    // 關卡設定（rocks: cx=水杯中心偏移px, cy=底部起算高度比例, r=半徑px）
     const LEVELS = [
-      { target: 0.40, rate: 0.0020, tolerance: 0.050, blockerSpeed: 0.0, cup: CUPS.round },
-      { target: 0.70, rate: 0.0025, tolerance: 0.045, blockerSpeed: 0.5, cup: CUPS.straight },
-      { target: 0.30, rate: 0.0030, tolerance: 0.040, blockerSpeed: 0.9, cup: CUPS.wide },
-      { target: 0.80, rate: 0.0035, tolerance: 0.035, blockerSpeed: 1.4, cup: CUPS.taper },
-      { target: 0.55, rate: 0.0040, tolerance: 0.030, blockerSpeed: 0.04, blockerMode: 'spin', cup: CUPS.hourglass },
-      { target: 0.85, rate: 0.0050, tolerance: 0.020, blockerSpeed: 0.06, blockerMode: 'spin', cup: CUPS.irregular },
+      { target: 0.40, rate: 0.0020, tolerance: 0.050, rocks: [], cup: CUPS.round },
+      { target: 0.70, rate: 0.0025, tolerance: 0.045, rocks: [{ cx: 0,   cy: 0.10, r: 15 }], cup: CUPS.straight },
+      { target: 0.30, rate: 0.0030, tolerance: 0.040, rocks: [{ cx: -15, cy: 0.08, r: 12 }, { cx: 20, cy: 0.13, r: 14 }], cup: CUPS.wide },
+      { target: 0.80, rate: 0.0035, tolerance: 0.035, rocks: [{ cx: 5,   cy: 0.07, r: 16 }, { cx: -10, cy: 0.19, r: 12 }], cup: CUPS.taper },
+      { target: 0.55, rate: 0.0040, tolerance: 0.030, rocks: [{ cx: -12, cy: 0.06, r: 13 }, { cx: 14, cy: 0.11, r: 11 }, { cx: 0, cy: 0.21, r: 10 }], cup: CUPS.hourglass },
+      { target: 0.85, rate: 0.0050, tolerance: 0.020, rocks: [{ cx: 0, cy: 0.06, r: 16 }, { cx: -18, cy: 0.13, r: 12 }, { cx: 16, cy: 0.16, r: 13 }, { cx: -5, cy: 0.23, r: 10 }], cup: CUPS.irregular },
     ];
 
     // 遊戲狀態
@@ -79,9 +75,6 @@
       waveAmp:         0,
       winTime:         0,
       resultDelay:     0,
-      blockerX:        195,
-      blockerDir:      1,
-      blockerAngle:    0,
     };
 
     const lvl = () => LEVELS[state.currentLevel];
@@ -431,7 +424,7 @@
       if (state.gameState === 'POURING') {
         const transfer = Math.min(POUR_RATE, state.collectedLevel);
         state.collectedLevel = Math.max(0, state.collectedLevel - transfer);
-        state.fillLevel      = Math.min(1, state.fillLevel + transfer * POUR_RATIO);
+        state.fillLevel      = Math.min(1, state.fillLevel + transfer * effectivePourRatio());
         state.waveAmp = Math.min(6, state.waveAmp + 0.3);
         if (state.fillLevel >= 1) {
           state.collectedLevel = 0;
@@ -522,72 +515,43 @@
       }
     }
 
-    function updateBlocker() {
-      if (state.gameState !== 'PLAYING' && state.gameState !== 'READY') return;
-      const speed = lvl().blockerSpeed;
-      if (!speed) return;
-      if (lvl().blockerMode === 'spin') {
-        state.blockerAngle = (state.blockerAngle + speed) % (Math.PI * 2);
-      } else {
-        state.blockerX += speed * state.blockerDir;
-        if (state.blockerX >= BLOCKER.maxCX || state.blockerX <= BLOCKER.minCX) {
-          state.blockerDir *= -1;
-        }
-      }
+    function effectivePourRatio() {
+      const rocks = lvl().rocks;
+      if (!rocks || rocks.length === 0) return 1;
+      const cupArea = CUP.w * CUP.h;
+      const rockArea = rocks.reduce((s, r) => s + Math.PI * r.r * r.r, 0);
+      return 1 / (1 - Math.min(0.5, rockArea / cupArea));
     }
 
-    function drawBlocker() {
-      if (!lvl().blockerSpeed) return;
-      const { h, y } = BLOCKER;
-      if (lvl().blockerMode === 'spin') {
-        ctx.save();
-        ctx.translate(SPIN_CX, y);
-        ctx.rotate(state.blockerAngle);
-        roundRect(-SPIN_ARM, -h / 2, SPIN_ARM * 2, h, 3);
-        ctx.fillStyle = '#8a7a6a';
+    function drawRocks(cup) {
+      const rocks = lvl().rocks;
+      if (!rocks || rocks.length === 0) return;
+      const { x, y, w, h } = CUP;
+      const cx = x + w / 2;
+      ctx.save();
+      cupPath(cup);
+      ctx.clip();
+      rocks.forEach(rock => {
+        const rx = cx + rock.cx;
+        const ry = y + h - rock.cy * h;
+        const g = ctx.createRadialGradient(rx - rock.r * 0.3, ry - rock.r * 0.3, rock.r * 0.1, rx, ry, rock.r);
+        g.addColorStop(0, '#b8a898');
+        g.addColorStop(1, '#5a4e42');
+        ctx.beginPath();
+        ctx.arc(rx, ry, rock.r, 0, Math.PI * 2);
+        ctx.fillStyle = g;
         ctx.fill();
-        ctx.strokeStyle = C.gold;
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        ctx.lineWidth = 1;
         ctx.stroke();
-        ctx.restore();
-      } else {
-        const { w } = BLOCKER;
-        roundRect(state.blockerX - w / 2, y - h / 2, w, h, 3);
-        ctx.fillStyle = '#8a7a6a';
-        ctx.fill();
-        ctx.strokeStyle = C.gold;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      }
+      });
+      ctx.restore();
     }
 
     function updateParticles() {
       if (state.isPouring && state.gameState === 'PLAYING') spawnParticles();
       state.particles = state.particles.filter(p => {
         p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life++;
-        if (lvl().blockerSpeed) {
-          if (lvl().blockerMode === 'spin') {
-            const dx = p.x - SPIN_CX;
-            const dy = p.y - BLOCKER.y;
-            if (Math.abs(dy) <= BLOCKER.h + 4) {
-              const cos = Math.cos(-state.blockerAngle);
-              const sin = Math.sin(-state.blockerAngle);
-              const lx = dx * cos - dy * sin;
-              const ly = dx * sin + dy * cos;
-              if (Math.abs(lx) <= SPIN_ARM && Math.abs(ly) <= BLOCKER.h / 2 + 4) {
-                spawnSplash(p.x, p.y);
-                return false;
-              }
-            }
-          } else {
-            const bl = state.blockerX - BLOCKER.w / 2;
-            const br = state.blockerX + BLOCKER.w / 2;
-            if (p.y >= BLOCKER.y - 6 && p.y <= BLOCKER.y + 4 && p.x >= bl && p.x <= br) {
-              spawnSplash(p.x, BLOCKER.y);
-              return false;
-            }
-          }
-        }
         if (state.gameState === 'PLAYING' &&
             p.y >= COLLECTOR.y && p.x >= COLLECTOR.x && p.x <= COLLECTOR.x + COLLECTOR.w) {
           spawnSplash(p.x, COLLECTOR.y);
@@ -713,9 +677,6 @@
       state.waveAmp         = 0;
       state.winTime         = 0;
       state.resultDelay     = 0;
-      state.blockerX        = BLOCKER.minCX;
-      state.blockerDir      = 1;
-      state.blockerAngle    = 0;
     }
 
     function resetGame() {
@@ -846,7 +807,8 @@
         ctx.font = '16px sans-serif';
         ctx.fillStyle = C.text;
         ctx.textAlign = 'center';
-        ctx.fillText('按住螢幕開始集水', LW / 2, LH - 70);
+        const hasRocks = lvl().rocks && lvl().rocks.length > 0;
+        ctx.fillText(hasRocks ? '注意！杯內有石頭，水位會更快上升' : '按住螢幕開始集水', LW / 2, LH - 70);
         ctx.globalAlpha = 1;
       }
 
@@ -889,7 +851,6 @@
       state.time += 1 / 60;
       if (state.gameState !== 'SELECT') {
         updateWater();
-        updateBlocker();
         updateParticles();
       }
       ctx.clearRect(0, 0, LW, LH);
@@ -907,11 +868,11 @@
         ctx.translate(0, bounceY);
         const cup = lvl().cup;
         drawCupFill(cup);
+        drawRocks(cup);
         drawWater(cup);
         drawPourStream();
         drawCollector();
         drawCollectorWater();
-        drawBlocker();
         drawParticles();
         drawCupBorder(cup);
         drawTargetLine(cup);
