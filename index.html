@@ -259,59 +259,77 @@
       ctx.stroke();
     }
 
+    function cloudBlobs(cx, ty, w, h) {
+      return [
+        { x: cx,      y: ty + h * 0.60, r: 21 },
+        { x: cx - 20, y: ty + h * 0.72, r: 15 },
+        { x: cx + 20, y: ty + h * 0.72, r: 15 },
+        { x: cx - 8,  y: ty + h * 0.26, r: 16 },
+        { x: cx + 8,  y: ty + h * 0.26, r: 14 },
+        { x: cx,      y: ty + h * 0.06, r: 12 },
+      ];
+    }
+
     function drawCollector() {
       const { x, y, w, h } = COLLECTOR;
       const cx = x + w / 2;
-      roundRect(x, y, w, h, 6);
-      ctx.fillStyle = 'rgba(230,222,210,0.9)';
-      ctx.fill();
-      ctx.strokeStyle = C.gold;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx - 7, y + h);
-      ctx.lineTo(cx + 7, y + h);
-      ctx.lineTo(cx + 4, y + h + 10);
-      ctx.lineTo(cx - 4, y + h + 10);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(210,200,185,0.9)';
-      ctx.fill();
-      ctx.strokeStyle = C.gold;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      const blobs = cloudBlobs(cx, y, w, h);
+      blobs.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(225,238,255,0.93)';
+        ctx.fill();
+      });
+      blobs.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(150,190,235,0.7)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
       ctx.font = '9px sans-serif';
       ctx.fillStyle = C.text;
       ctx.textAlign = 'center';
-      ctx.fillText('集水站', cx, y - 4);
+      ctx.fillText('集水站', cx, y - 10);
     }
 
     function drawCollectorWater() {
       if (state.collectedLevel <= 0) return;
       const { x, y, w, h } = COLLECTOR;
-      const waterTopY = y + h * (1 - state.collectedLevel);
+      const cx = x + w / 2;
+      const cloudTop  = y - 5;
+      const cloudBot  = y + h;
+      const waterTopY = cloudTop + (cloudBot - cloudTop) * (1 - state.collectedLevel);
       ctx.save();
-      roundRect(x + 2, y + 2, w - 4, h - 4, 5);
+      ctx.beginPath();
+      cloudBlobs(cx, y, w, h).forEach(b => ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2));
       ctx.clip();
-      const g = ctx.createLinearGradient(0, waterTopY, 0, y + h);
-      g.addColorStop(0, '#7ec8e3');
-      g.addColorStop(1, '#5ab0d0');
+      const g = ctx.createLinearGradient(0, waterTopY, 0, cloudBot);
+      g.addColorStop(0, 'rgba(126,200,227,0.75)');
+      g.addColorStop(1, 'rgba(90,176,208,0.90)');
       ctx.fillStyle = g;
-      ctx.fillRect(x, waterTopY, w, h);
+      ctx.fillRect(x - 30, waterTopY, w + 60, cloudBot - waterTopY + 10);
       ctx.restore();
     }
 
     function drawPourStream() {
       if (state.gameState !== 'POURING' || state.collectedLevel <= 0) return;
       const cx = COLLECTOR.x + COLLECTOR.w / 2;
-      const fromY = COLLECTOR.y + COLLECTOR.h + 10;
+      const fromY = COLLECTOR.y + COLLECTOR.h;
       const toY = CUP.y + CUP.h * (1 - state.fillLevel);
       if (toY <= fromY) return;
-      const streamW = Math.max(2, 6 * state.collectedLevel);
-      const g = ctx.createLinearGradient(0, fromY, 0, toY);
-      g.addColorStop(0, 'rgba(126,200,227,0.9)');
-      g.addColorStop(1, 'rgba(90,176,208,0.4)');
-      ctx.fillStyle = g;
-      ctx.fillRect(cx - streamW / 2, fromY, streamW, toY - fromY);
+      const cols = Math.max(3, Math.round(state.collectedLevel * 8));
+      const spread = 18;
+      for (let i = 0; i < cols; i++) {
+        const dx = cols > 1 ? (i / (cols - 1) - 0.5) * spread * 2 : 0;
+        const phase = ((state.time * 3 + i * 0.41) % 1);
+        const dropY  = fromY + phase * (toY - fromY);
+        const a = phase > 0.85 ? (1 - phase) / 0.15 * 0.8 : 0.8;
+        ctx.fillStyle = `rgba(126,200,227,${a.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.ellipse(cx + dx, dropY, 2.5, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     function drawCupMini(cup, cx, topY, h, scale) {
