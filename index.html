@@ -488,6 +488,11 @@
       ctx.restore();
     }
 
+    const BALL_COLORS = [
+      '245,165,120', '245,190,195', '126,207,184',
+      '245,220,120', '160,218,164', '200,170,230',
+    ];
+
     function spawnParticles() {
       for (let i = 0; i < 2; i++) {
         state.particles.push({
@@ -495,9 +500,10 @@
           y: SLIDE_END.y,
           vx: (Math.random() - 0.5) * 1.5,
           vy: 1 + Math.random() * 2,
-          r: 4 + Math.random() * 4,
+          r: 6 + Math.random() * 5,
           life: 0,
           maxLife: 55 + Math.random() * 20,
+          color: BALL_COLORS[Math.floor(Math.random() * BALL_COLORS.length)],
         });
       }
       if (state.particles.length > 100)
@@ -575,10 +581,17 @@
 
     function drawParticles() {
       state.particles.forEach(p => {
-        const a = (1 - p.life / p.maxLife) * 0.7;
+        const a = (1 - p.life / p.maxLife) * 0.92;
+        const g = ctx.createRadialGradient(
+          p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.05,
+          p.x, p.y, p.r
+        );
+        g.addColorStop(0,    `rgba(255,255,255,${(a * 0.95).toFixed(2)})`);
+        g.addColorStop(0.35, `rgba(${p.color},${a.toFixed(2)})`);
+        g.addColorStop(1,    `rgba(${p.color},${(a * 0.5).toFixed(2)})`);
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(126,200,227,${a.toFixed(2)})`;
+        ctx.fillStyle = g;
         ctx.fill();
       });
       state.splashes.forEach(s => {
