@@ -24,12 +24,12 @@
     // 佈局座標（邏輯像素）
     const MACHINE     = { x: 80,  y: 60,  w: 230, h: 180 };
     const SLIDE_START = { x: 75,  y: 185 };
-    const SLIDE_END   = { x: 200, y: 435 };
-    const CUP         = { x: 145, y: 615, w: 100, h: 120 };
-    const BLOCKER     = { w: 48, h: 8, y: 475, minCX: 115, maxCX: 285 };
+    const SLIDE_END   = { x: 200, y: 320 };
+    const CUP         = { x: 145, y: 590, w: 100, h: 120 };
+    const BLOCKER     = { w: 48, h: 8, y: 375, minCX: 130, maxCX: 260 };
     const SPIN_CX     = CUP.x + CUP.w / 2;  // 旋轉中心 x = 195
     const SPIN_ARM    = 35;
-    const COLLECTOR   = { x: 155, y: 515, w: 80, h: 45 };
+    const COLLECTOR   = { x: 155, y: 430, w: 100, h: 72 };
     const POUR_RATE   = 1 / 90;
     const POUR_RATIO  = 1;    // 集水站 1:1 對應水杯：集水站 40% → 水杯 40%
 
@@ -99,7 +99,7 @@
     const ctx = canvas.getContext('2d');
 
     const bgImg = new Image();
-    bgImg.src = '科技背景.png';
+    bgImg.src = '背景.png';
     let bgLoaded = false;
     bgImg.onload = () => { bgLoaded = true; };
 
@@ -141,83 +141,64 @@
         ctx.fillStyle = C.bg;
         ctx.fillRect(0, 0, LW, LH);
       }
-      // 白霧層：讓遊戲元素更清晰
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      // 輕薄霧層，保留背景色彩
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
       ctx.fillRect(0, 0, LW, LH);
     }
 
     function drawMachine() {
-      const { x, y, w, h } = MACHINE;
-      const g = ctx.createLinearGradient(x, y, x + w, y + h);
-      g.addColorStop(0, '#ede5da');
-      g.addColorStop(1, '#d4cbbf');
-      roundRect(x, y, w, h, 20);
-      ctx.fillStyle = g;
+      // 左上角緊湊面板
+      const px = 16, py = 16, pw = 148, ph = 72;
+      roundRect(px, py, pw, ph, 14);
+      ctx.fillStyle = 'rgba(245,250,255,0.88)';
       ctx.fill();
-      ctx.strokeStyle = C.gold;
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(140,195,230,0.75)';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      roundRect(x + 65, y + 12, 140, 38, 10);
-      ctx.fillStyle = '#3a3230';
+      // ON / 開
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillStyle = '#4a6a8a';
+      ctx.textAlign = 'center';
+      ctx.fillText('ON', px + 18, py + 24);
+      ctx.fillText('開', px + 18, py + 38);
+
+      // 分隔線
+      ctx.beginPath();
+      ctx.moveTo(px + 33, py + 10);
+      ctx.lineTo(px + 33, py + ph - 10);
+      ctx.strokeStyle = 'rgba(140,195,230,0.35)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // 標題徽章
+      roundRect(px + 40, py + 9, 97, 29, 8);
+      ctx.fillStyle = '#1e304a';
       ctx.fill();
-      ctx.font = 'bold 15px sans-serif';
+      ctx.font = 'bold 12px sans-serif';
       ctx.fillStyle = '#f0d070';
       ctx.textAlign = 'center';
-      ctx.fillText('接水樂園', x + 135, y + 28);
-      ctx.font = '9px sans-serif';
-      ctx.fillStyle = '#9a8a70';
-      ctx.fillText('WATER PARK', x + 135, y + 42);
+      ctx.fillText('接水樂園', px + 88, py + 21);
+      ctx.font = '8px sans-serif';
+      ctx.fillStyle = 'rgba(160,205,245,0.9)';
+      ctx.fillText('WATER PARK', px + 88, py + 33);
 
-      ctx.font = 'bold 10px sans-serif';
-      ctx.fillStyle = C.text;
-      ctx.textAlign = 'center';
-      ctx.fillText('ON', x + 18, y + 40);
-      ctx.fillText('開', x + 18, y + 54);
-
-      roundRect(x + 30, y + 95, 50, 50, 10);
-      ctx.fillStyle = '#f0ebe3';
+      // 小水杯圖示框
+      const bx = px + 55, by = py + 44, bw = 38, bh = 18;
+      roundRect(bx, by, bw, bh, 6);
+      ctx.fillStyle = '#eef4fb';
       ctx.fill();
-      ctx.strokeStyle = C.gold;
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(140,195,230,0.5)';
+      ctx.lineWidth = 1;
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(x + 55, y + 125, 8, 0, Math.PI * 2);
+      ctx.arc(bx + bw / 2, by + bh / 2, 4, 0, Math.PI * 2);
       ctx.fillStyle = C.water;
       ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(SLIDE_START.x, SLIDE_START.y, 12, 0, Math.PI * 2);
-      ctx.fillStyle = '#ccc4b8';
-      ctx.fill();
-      ctx.strokeStyle = C.gold;
-      ctx.lineWidth = 2;
-      ctx.stroke();
     }
 
     function drawSlide() {
-      const sx = SLIDE_START.x, sy = SLIDE_START.y;
-      const ex = SLIDE_END.x,   ey = SLIDE_END.y;
-      const sw = 22;
-      const len = Math.hypot(ex - sx, ey - sy);
-      const nx = -(ey - sy) / len;
-      const ny =  (ex - sx) / len;
-
-      ctx.beginPath();
-      ctx.moveTo(sx + nx * sw / 2, sy + ny * sw / 2);
-      ctx.lineTo(ex + nx * sw / 2, ey + ny * sw / 2);
-      ctx.lineTo(ex - nx * sw / 2, ey - ny * sw / 2);
-      ctx.lineTo(sx - nx * sw / 2, sy - ny * sw / 2);
-      ctx.closePath();
-
-      const g = ctx.createLinearGradient(sx, sy, ex, ey);
-      g.addColorStop(0, '#d8d0c5');
-      g.addColorStop(1, '#c5bdb2');
-      ctx.fillStyle = g;
-      ctx.fill();
-      ctx.strokeStyle = C.gold;
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      // 背景圖片已有管道視覺，不另外繪製
     }
 
     function cupPath(cup) {
@@ -287,10 +268,31 @@
         ctx.lineWidth = 1.5;
         ctx.stroke();
       });
-      ctx.font = '9px sans-serif';
-      ctx.fillStyle = C.text;
-      ctx.textAlign = 'center';
-      ctx.fillText('集水站', cx, y - 10);
+    }
+
+    function drawCloudFace() {
+      const { x, y, w, h } = COLLECTOR;
+      const cx = x + w / 2;
+      const fy = y + h * 0.62;
+      // 眼睛
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.arc(cx - 9, fy - 5, 3.5, 0, Math.PI * 2);
+      ctx.arc(cx + 9, fy - 5, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      // 笑臉
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(cx, fy + 3, 7, 0, Math.PI);
+      ctx.stroke();
+      // 腮紅
+      ctx.fillStyle = 'rgba(255,130,130,0.38)';
+      ctx.beginPath();
+      ctx.ellipse(cx - 16, fy + 3, 6, 4, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 16, fy + 3, 6, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     function drawCollectorWater() {
@@ -493,12 +495,12 @@
       ctx.closePath();
 
       const g = ctx.createLinearGradient(x, waterTopY, x, y + h);
-      g.addColorStop(0, '#ff9800');
-      g.addColorStop(1, '#e65100');
+      g.addColorStop(0, '#7ec8e3');
+      g.addColorStop(1, '#5ab0d0');
       ctx.fillStyle = g;
       ctx.fill();
 
-      ctx.strokeStyle = 'rgba(255,220,100,0.8)';
+      ctx.strokeStyle = 'rgba(180,230,255,0.8)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(cx - halfW, waterTopY);
@@ -929,6 +931,7 @@
         drawPourStream();
         drawCollector();
         drawCollectorWater();
+        drawCloudFace();
         drawBlocker();
         drawParticles();
         drawCupBorder(cup);
