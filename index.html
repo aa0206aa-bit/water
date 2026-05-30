@@ -50,14 +50,15 @@
       irregular: { widthAt(t) { return 85 + 20 * Math.sin(t * Math.PI * 3); } },
     };
 
-    // 關卡設定（rocks: cx=水杯中心偏移px, cy=底部起算高度比例, r=半徑px）
+    // 關卡設定（target = 需要集到的集水量比例；視覺目標線 = target × effectivePourRatio()）
+    // rocks: cx=水杯中心偏移px, cy=底部起算高度比例, r=半徑px（隨關卡遞增）
     const LEVELS = [
       { target: 0.40, rate: 0.0020, tolerance: 0.050, rocks: [], cup: CUPS.round },
-      { target: 0.70, rate: 0.0025, tolerance: 0.045, rocks: [{ cx: 0,   cy: 0.10, r: 15 }], cup: CUPS.straight },
-      { target: 0.30, rate: 0.0030, tolerance: 0.040, rocks: [{ cx: -15, cy: 0.08, r: 12 }, { cx: 20, cy: 0.13, r: 14 }], cup: CUPS.wide },
-      { target: 0.80, rate: 0.0035, tolerance: 0.035, rocks: [{ cx: 5,   cy: 0.07, r: 16 }, { cx: -10, cy: 0.19, r: 12 }], cup: CUPS.taper },
-      { target: 0.55, rate: 0.0040, tolerance: 0.030, rocks: [{ cx: -12, cy: 0.06, r: 13 }, { cx: 14, cy: 0.11, r: 11 }, { cx: 0, cy: 0.21, r: 10 }], cup: CUPS.hourglass },
-      { target: 0.85, rate: 0.0050, tolerance: 0.020, rocks: [{ cx: 0, cy: 0.06, r: 16 }, { cx: -18, cy: 0.13, r: 12 }, { cx: 16, cy: 0.16, r: 13 }, { cx: -5, cy: 0.23, r: 10 }], cup: CUPS.irregular },
+      { target: 0.68, rate: 0.0025, tolerance: 0.045, rocks: [{ cx: 0, cy: 0.09, r: 10 }], cup: CUPS.straight },
+      { target: 0.28, rate: 0.0030, tolerance: 0.040, rocks: [{ cx: -14, cy: 0.08, r: 12 }, { cx: 16, cy: 0.12, r: 11 }], cup: CUPS.wide },
+      { target: 0.70, rate: 0.0035, tolerance: 0.035, rocks: [{ cx: 0, cy: 0.07, r: 14 }, { cx: -18, cy: 0.14, r: 12 }, { cx: 18, cy: 0.17, r: 11 }], cup: CUPS.taper },
+      { target: 0.45, rate: 0.0040, tolerance: 0.030, rocks: [{ cx: -15, cy: 0.06, r: 15 }, { cx: 15, cy: 0.09, r: 13 }, { cx: 0, cy: 0.16, r: 14 }, { cx: -8, cy: 0.22, r: 10 }], cup: CUPS.hourglass },
+      { target: 0.65, rate: 0.0050, tolerance: 0.020, rocks: [{ cx: 0, cy: 0.05, r: 18 }, { cx: -20, cy: 0.12, r: 14 }, { cx: 20, cy: 0.14, r: 15 }, { cx: -8, cy: 0.22, r: 12 }, { cx: 10, cy: 0.26, r: 11 }], cup: CUPS.irregular },
     ];
 
     // 遊戲狀態
@@ -403,8 +404,9 @@
     function drawTargetLine(cup) {
       const { x, y, w, h } = CUP;
       const cx = x + w / 2;
-      const lineY = y + h * (1 - lvl().target);
-      const halfW = cup.widthAt(lvl().target) / 2;
+      const vt = Math.min(0.97, lvl().target * effectivePourRatio());
+      const lineY = y + h * (1 - vt);
+      const halfW = cup.widthAt(vt) / 2;
       ctx.save();
       ctx.setLineDash([6, 4]);
       ctx.strokeStyle = C.targetLine;
@@ -753,7 +755,8 @@
 
     function checkWinLose() {
       if (state.gameState !== 'POURING') return;
-      if (Math.abs(state.fillLevel - lvl().target) <= lvl().tolerance) {
+      const vt = Math.min(0.97, lvl().target * effectivePourRatio());
+      if (Math.abs(state.fillLevel - vt) <= lvl().tolerance) {
         state.gameState   = 'WIN';
         state.resultDelay = 72;
         if (state.currentLevel + 1 > state.maxUnlocked) {
@@ -762,7 +765,7 @@
         }
       } else {
         state.gameState   = 'GAME_OVER';
-        state.loseReason  = state.fillLevel < lvl().target ? 'tooLittle' : 'overflow';
+        state.loseReason  = state.fillLevel < vt ? 'tooLittle' : 'overflow';
         state.resultDelay = 72;
       }
     }
